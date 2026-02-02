@@ -1,0 +1,41 @@
+{
+    "patterns": [
+        {
+            "name": "find_user_by_email",
+            "question": "Find a user by their email address",
+            "sql": "SELECT id, name, email, created_at FROM users WHERE LOWER(email) = LOWER(?) AND deleted_at IS NULL",
+            "summary": "Look up a user by email, handling case insensitivity",
+            "tables_used": ["users"],
+            "data_quality_notes": "Always use LOWER() for email comparison as emails are stored in lowercase"
+        },
+        {
+            "name": "recent_published_posts",
+            "question": "Get the most recently published posts",
+            "sql": "SELECT p.*, u.name as author_name FROM posts p JOIN users u ON u.id = p.user_id WHERE p.status = 'published' AND p.published_at IS NOT NULL AND u.deleted_at IS NULL ORDER BY p.published_at DESC LIMIT 10",
+            "summary": "Fetch recent published posts with author information",
+            "tables_used": ["posts", "users"],
+            "data_quality_notes": "Excludes posts from deleted users"
+        },
+        {
+            "name": "admin_users",
+            "question": "List all admin users",
+            "sql": "SELECT id, name, email, created_at, last_login_at FROM users WHERE role = 'admin' AND deleted_at IS NULL ORDER BY name",
+            "summary": "Get all users with admin role",
+            "tables_used": ["users"]
+        },
+        {
+            "name": "unverified_users",
+            "question": "Find users who haven't verified their email",
+            "sql": "SELECT id, name, email, created_at FROM users WHERE email_verified_at IS NULL AND deleted_at IS NULL ORDER BY created_at DESC",
+            "summary": "List users with unverified email addresses",
+            "tables_used": ["users"]
+        },
+        {
+            "name": "posts_with_no_views",
+            "question": "Find published posts that have zero views",
+            "sql": "SELECT p.id, p.title, p.published_at, u.name as author FROM posts p JOIN users u ON u.id = p.user_id WHERE p.status = 'published' AND p.view_count = 0 AND u.deleted_at IS NULL ORDER BY p.published_at DESC",
+            "summary": "Published posts that haven't been viewed yet",
+            "tables_used": ["posts", "users"]
+        }
+    ]
+}

@@ -1,0 +1,57 @@
+{
+    "name": "knobik/laravel-sql-agent",
+    "description": "Self-learning text-to-SQL agent for Laravel",
+    "keywords": ["laravel", "sql", "ai", "llm", "text-to-sql", "agent", "eloquent"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "knobik"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/database": "^11.0|^12.0",
+        "illuminate/console": "^11.0|^12.0",
+        "spatie/laravel-data": "^4.0",
+        "doctrine/dbal": "^3.0|^4.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^2.0|^3.0",
+        "pestphp/pest-plugin-laravel": "^2.0|^3.0"
+    },
+    "suggest": {
+        "openai-php/laravel": "Required for OpenAI LLM driver",
+        "livewire/livewire": "Required for the chat UI",
+        "laravel/scout": "Required for Scout search driver"
+    },
+    "autoload": {
+        "psr-4": {
+            "Knobik\\SqlAgent\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Knobik\\SqlAgent\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Knobik\\SqlAgent\\SqlAgentServiceProvider"
+            ],
+            "aliases": {
+                "SqlAgent": "Knobik\\SqlAgent\\Facades\\SqlAgent"
+            }
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

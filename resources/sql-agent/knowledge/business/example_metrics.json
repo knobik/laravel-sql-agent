@@ -1,0 +1,57 @@
+{
+    "metrics": [
+        {
+            "name": "Active User",
+            "definition": "A user who has logged in within the last 30 days",
+            "table": "users",
+            "calculation": "WHERE last_login_at > NOW() - INTERVAL 30 DAY AND deleted_at IS NULL"
+        },
+        {
+            "name": "Published Post",
+            "definition": "A post with status='published' and published_at is not null",
+            "table": "posts",
+            "calculation": "WHERE status = 'published' AND published_at IS NOT NULL"
+        },
+        {
+            "name": "Popular Post",
+            "definition": "A published post with more than 1000 views",
+            "table": "posts",
+            "calculation": "WHERE status = 'published' AND view_count > 1000"
+        },
+        {
+            "name": "Verified User",
+            "definition": "A user who has confirmed their email address",
+            "table": "users",
+            "calculation": "WHERE email_verified_at IS NOT NULL AND deleted_at IS NULL"
+        }
+    ],
+    "business_rules": [
+        "Users with role='admin' have access to all resources and can manage other users",
+        "Deleted users (deleted_at IS NOT NULL) should be excluded from most queries unless specifically requested",
+        "Draft posts (status='draft') should not appear in public listings",
+        "Only verified users (email_verified_at IS NOT NULL) can create posts",
+        "View counts are only tracked for published posts"
+    ],
+    "common_gotchas": [
+        {
+            "issue": "Soft deletes on users",
+            "tables_affected": ["users"],
+            "solution": "Always add WHERE deleted_at IS NULL unless specifically querying deleted records"
+        },
+        {
+            "issue": "Post status vs published_at",
+            "tables_affected": ["posts"],
+            "solution": "A post is truly published only when status='published' AND published_at IS NOT NULL. Check both conditions."
+        },
+        {
+            "issue": "Timezone handling",
+            "tables_affected": ["users", "posts", "comments"],
+            "solution": "All timestamps are stored in UTC. Convert to user's timezone in the application layer, not SQL."
+        },
+        {
+            "issue": "Case sensitivity in emails",
+            "tables_affected": ["users"],
+            "solution": "Emails are stored in lowercase. Use LOWER() when comparing user-provided emails."
+        }
+    ]
+}
