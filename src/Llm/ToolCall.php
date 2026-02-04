@@ -65,4 +65,19 @@ class ToolCall
             'input' => $this->arguments,
         ];
     }
+
+    /**
+     * Convert to Ollama tool call format (arguments as object, not string).
+     */
+    public function toOllamaArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'type' => 'function',
+            'function' => [
+                'name' => $this->name,
+                'arguments' => $this->arguments,
+            ],
+        ];
+    }
 }

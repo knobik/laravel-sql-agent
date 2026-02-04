@@ -7,6 +7,8 @@ namespace Knobik\SqlAgent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Knobik\SqlAgent\Agent\MessageBuilder;
+use Knobik\SqlAgent\Livewire\ChatComponent;
+use Knobik\SqlAgent\Livewire\ConversationList;
 use Knobik\SqlAgent\Agent\PromptRenderer;
 use Knobik\SqlAgent\Agent\SqlAgent;
 use Knobik\SqlAgent\Agent\ToolRegistry;
@@ -129,7 +131,10 @@ class SqlAgentServiceProvider extends ServiceProvider
 
         // Views (includes prompts)
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'sql-agent');
-        $this->loadViewsFrom(__DIR__ . '/../resources/prompts', 'sql-agent::prompts');
+        $this->loadViewsFrom(__DIR__ . '/../resources/prompts', 'sql-agent-prompts');
+
+        // Register Livewire components if Livewire is available and UI is enabled
+        $this->registerLivewireComponents();
 
         // Routes
         $this->loadRoutesFrom(__DIR__ . '/../routes/web.php');
@@ -166,5 +171,19 @@ class SqlAgentServiceProvider extends ServiceProvider
                 __DIR__ . '/../resources/prompts' => resource_path('views/vendor/sql-agent/prompts'),
             ], 'sql-agent-prompts');
         }
+    }
+
+    protected function registerLivewireComponents(): void
+    {
+        if (! class_exists(\Livewire\Livewire::class)) {
+            return;
+        }
+
+        if (! config('sql-agent.ui.enabled', true)) {
+            return;
+        }
+
+        \Livewire\Livewire::component('sql-agent-chat', ChatComponent::class);
+        \Livewire\Livewire::component('sql-agent-conversation-list', ConversationList::class);
     }
 }

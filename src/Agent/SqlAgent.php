@@ -115,7 +115,7 @@ class SqlAgent implements Agent
         }
     }
 
-    public function stream(string $question, ?string $connection = null): Generator
+    public function stream(string $question, ?string $connection = null, array $history = []): Generator
     {
         $this->reset();
         $this->currentQuestion = $question;
@@ -128,6 +128,11 @@ class SqlAgent implements Agent
 
         // Build initial messages
         $messages = $this->messageBuilder->build($systemPrompt, $question);
+
+        // Include conversation history if provided
+        if (! empty($history)) {
+            $messages = $this->messageBuilder->withHistory($messages, $history);
+        }
 
         // Configure tools for the connection
         $tools = $this->prepareTools($connection, $question);
@@ -163,6 +168,12 @@ class SqlAgent implements Agent
 
             // If no tool calls, we're done
             if (empty($toolCalls)) {
+                // If content is empty but we have results, generate a fallback response
+                if (empty(trim($content)) && $this->lastSql !== null && $this->lastResults !== null) {
+                    $fallbackContent = $this->generateFallbackResponse();
+                    yield new StreamChunk(content: $fallbackContent);
+                }
+
                 yield StreamChunk::complete('stop');
 
                 return;
@@ -175,9 +186,31 @@ class SqlAgent implements Agent
             );
 
             foreach ($toolCalls as $toolCall) {
-                // Yield a chunk indicating tool execution
+                // Yield a chunk indicating tool execution (using a marker that can be styled)
+                $toolLabel = match($toolCall->name) {
+                    'run_sql' => 'Running SQL query',
+                    'introspect_schema' => 'Inspecting schema',
+                    'search_knowledge' => 'Searching knowledge base',
+                    'save_learning' => 'Saving learning',
+                    default => $toolCall->name,
+                };
+                $toolType = match($toolCall->name) {
+                    'run_sql' => 'sql',
+                    'introspect_schema' => 'schema',
+                    'search_knowledge' => 'search',
+                    'save_learning' => 'save',
+                    default => 'default',
+                };
+
+                // For SQL tools, include the query in a data attribute
+                $sqlData = '';
+                if ($toolCall->name === 'run_sql') {
+                    $sql = $toolCall->arguments['sql'] ?? $toolCall->arguments['query'] ?? '';
+                    $sqlData = ' data-sql="' . htmlspecialchars($sql, ENT_QUOTES, 'UTF-8') . '"';
+                }
+
                 yield new StreamChunk(
-                    content: "\n[Executing {$toolCall->name}...]\n",
+                    content: "\n<tool data-type=\"{$toolType}\"{$sqlData}>{$toolLabel}</tool>\n",
                 );
 
                 $result = $this->executeTool($toolCall);
@@ -258,7 +291,7 @@ class SqlAgent implements Agent
 
         // Track SQL queries
         if ($toolCall->name === 'run_sql' && $result->success) {
-            $this->lastSql = $toolCall->arguments['sql'] ?? null;
+            $this->lastSql = $toolCall->arguments['sql'] ?? $toolCall->arguments['query'] ?? null;
             $this->lastResults = $result->data['rows'] ?? null;
         }
 
@@ -276,5 +309,46 @@ class SqlAgent implements Agent
         }
 
         return $toolCalls;
+    }
+
+    /**
+     * Generate a fallback response when the LLM returns empty content but we have results.
+     */
+    protected function generateFallbackResponse(): string
+    {
+        if ($this->lastResults === null) {
+            return 'The query was executed but returned no results.';
+        }
+
+        $rowCount = count($this->lastResults);
+
+        if ($rowCount === 0) {
+            return 'The query was executed successfully but returned no results.';
+        }
+
+        // For single-value results (like COUNT queries), provide a direct answer
+        if ($rowCount === 1 && count($this->lastResults[0]) === 1) {
+            $value = array_values($this->lastResults[0])[0];
+            $key = array_keys($this->lastResults[0])[0];
+
+            // Try to make a natural language response based on the column name
+            $key = str_replace('_', ' ', $key);
+
+            return "The result is **{$value}** ({$key}).";
+        }
+
+        // For multiple rows or columns, summarize
+        if ($rowCount === 1) {
+            $row = $this->lastResults[0];
+            $parts = [];
+            foreach ($row as $key => $value) {
+                $key = str_replace('_', ' ', $key);
+                $parts[] = "**{$key}**: {$value}";
+            }
+
+            return 'Here is the result: ' . implode(', ', $parts);
+        }
+
+        return "The query returned **{$rowCount}** " . ($rowCount === 1 ? 'row' : 'rows') . '.';
     }
 }

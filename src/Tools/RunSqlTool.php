@@ -62,7 +62,8 @@ class RunSqlTool extends BaseTool
 
     protected function handle(array $parameters): mixed
     {
-        $sql = trim($parameters['sql'] ?? '');
+        // Accept either 'sql' or 'query' parameter (some models use 'query')
+        $sql = trim($parameters['sql'] ?? $parameters['query'] ?? '');
 
         if (empty($sql)) {
             throw new RuntimeException('SQL query cannot be empty.');

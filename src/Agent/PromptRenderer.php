@@ -13,11 +13,11 @@ class PromptRenderer
      */
     public function render(string $template, array $data = []): string
     {
-        $viewName = "sql-agent::prompts.{$template}";
+        $viewName = "sql-agent-prompts::{$template}";
 
         if (! View::exists($viewName)) {
-            // Try without prompts prefix as fallback
-            $viewName = "sql-agent::{$template}";
+            // Try under main sql-agent namespace as fallback
+            $viewName = "sql-agent::prompts.{$template}";
         }
 
         return View::make($viewName, $data)->render();
@@ -38,7 +38,7 @@ class PromptRenderer
      */
     public function exists(string $template): bool
     {
-        return View::exists("sql-agent::prompts.{$template}")
-            || View::exists("sql-agent::{$template}");
+        return View::exists("sql-agent-prompts::{$template}")
+            || View::exists("sql-agent::prompts.{$template}");
     }
 }

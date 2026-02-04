@@ -9,9 +9,16 @@ abstract class TestCase extends Orchestra
 {
     protected function getPackageProviders($app): array
     {
-        return [
+        $providers = [
             SqlAgentServiceProvider::class,
         ];
+
+        // Add Livewire provider if available
+        if (class_exists(\Livewire\LivewireServiceProvider::class)) {
+            $providers[] = \Livewire\LivewireServiceProvider::class;
+        }
+
+        return $providers;
     }
 
     protected function getPackageAliases($app): array
@@ -28,5 +35,8 @@ abstract class TestCase extends Orchestra
             'driver' => 'sqlite',
             'database' => ':memory:',
         ]);
+
+        // Set app key for Livewire tests
+        $app['config']->set('app.key', 'base64:'.base64_encode(random_bytes(32)));
     }
 }

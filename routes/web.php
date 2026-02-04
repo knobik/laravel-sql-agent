@@ -1,6 +1,24 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Knobik\SqlAgent\Http\Controllers\ExportController;
 
-// Routes will be added in Phase 7 (Livewire UI)
-// Conditionally loaded based on config('sql-agent.ui.enabled')
+// Only register routes if UI is enabled
+if (config('sql-agent.ui.enabled', true)) {
+    Route::middleware(config('sql-agent.ui.middleware', ['web', 'auth']))
+        ->prefix(config('sql-agent.ui.route_prefix', 'sql-agent'))
+        ->name('sql-agent.')
+        ->group(function () {
+            // Main chat interface
+            Route::get('/', fn () => view('sql-agent::chat'))->name('chat');
+
+            // Load specific conversation
+            Route::get('/conversation/{conversation}', fn ($conversation) => view('sql-agent::chat', [
+                'conversationId' => $conversation,
+            ]))->name('conversation');
+
+            // Export endpoints
+            Route::get('/export/{conversation}/json', [ExportController::class, 'json'])->name('export.json');
+            Route::get('/export/{conversation}/csv', [ExportController::class, 'csv'])->name('export.csv');
+        });
+}

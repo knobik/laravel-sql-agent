@@ -129,8 +129,12 @@ class OllamaDriver implements LlmDriver
                 $toolCalls = [];
                 foreach ($message['tool_calls'] as $toolCall) {
                     if ($toolCall instanceof ToolCall) {
-                        $toolCalls[] = $toolCall->toArray();
+                        $toolCalls[] = $toolCall->toOllamaArray();
                     } else {
+                        // If it's already an array, ensure arguments is not a JSON string
+                        if (isset($toolCall['function']['arguments']) && is_string($toolCall['function']['arguments'])) {
+                            $toolCall['function']['arguments'] = json_decode($toolCall['function']['arguments'], true) ?? [];
+                        }
                         $toolCalls[] = $toolCall;
                     }
                 }
@@ -162,10 +166,18 @@ class OllamaDriver implements LlmDriver
 
         if (! empty($message['tool_calls'])) {
             foreach ($message['tool_calls'] as $toolCall) {
+                $arguments = $toolCall['function']['arguments'] ?? [];
+
+                // Parse arguments if they're a JSON string
+                if (is_string($arguments)) {
+                    $parsed = json_decode($arguments, true);
+                    $arguments = is_array($parsed) ? $parsed : [];
+                }
+
                 $toolCalls[] = new ToolCall(
                     id: $toolCall['id'] ?? uniqid('tc_'),
                     name: $toolCall['function']['name'] ?? '',
-                    arguments: $toolCall['function']['arguments'] ?? [],
+                    arguments: $arguments,
                 );
             }
         }
@@ -199,10 +211,18 @@ class OllamaDriver implements LlmDriver
             // Handle tool calls
             if (! empty($message['tool_calls'])) {
                 foreach ($message['tool_calls'] as $toolCall) {
+                    $arguments = $toolCall['function']['arguments'] ?? [];
+
+                    // Parse arguments if they're a JSON string
+                    if (is_string($arguments)) {
+                        $parsed = json_decode($arguments, true);
+                        $arguments = is_array($parsed) ? $parsed : [];
+                    }
+
                     $toolCalls[] = new ToolCall(
                         id: $toolCall['id'] ?? uniqid('tc_'),
                         name: $toolCall['function']['name'] ?? '',
-                        arguments: $toolCall['function']['arguments'] ?? [],
+                        arguments: $arguments,
                     );
                 }
             }
