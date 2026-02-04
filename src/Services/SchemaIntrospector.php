@@ -4,17 +4,13 @@ declare(strict_types=1);
 
 namespace Knobik\SqlAgent\Services;
 
-use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\Schema\AbstractSchemaManager;
-use Doctrine\DBAL\Schema\Column;
-use Doctrine\DBAL\Schema\ForeignKeyConstraint;
-use Doctrine\DBAL\Schema\Table;
-use Illuminate\Database\Connection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Knobik\SqlAgent\Data\ColumnInfo;
 use Knobik\SqlAgent\Data\RelationshipInfo;
 use Knobik\SqlAgent\Data\TableSchema;
+use Throwable;
 
 class SchemaIntrospector
 {
@@ -25,12 +21,11 @@ class SchemaIntrospector
      */
     public function getAllTables(?string $connection = null): Collection
     {
-        $connection = $connection ?? config('sql-agent.database.connection');
-        $schemaManager = $this->getSchemaManager($connection);
+        $connection = $this->resolveConnection($connection);
 
         try {
-            $tableNames = $schemaManager->listTableNames();
-        } catch (Exception $e) {
+            $tableNames = $this->getTableNames($connection);
+        } catch (Throwable $e) {
             report($e);
 
             return collect();
@@ -46,14 +41,15 @@ class SchemaIntrospector
      */
     public function introspectTable(string $tableName, ?string $connection = null): ?TableSchema
     {
-        $connection = $connection ?? config('sql-agent.database.connection');
-        $schemaManager = $this->getSchemaManager($connection);
+        $connection = $this->resolveConnection($connection);
 
         try {
-            $table = $schemaManager->introspectTable($tableName);
+            if (! $this->tableExists($tableName, $connection)) {
+                return null;
+            }
 
-            return $this->tableToSchema($table, $schemaManager);
-        } catch (Exception $e) {
+            return $this->buildTableSchema($tableName, $connection);
+        } catch (Throwable $e) {
             report($e);
 
             return null;
@@ -65,7 +61,7 @@ class SchemaIntrospector
      */
     public function getRelevantSchema(string $question, ?string $connection = null): ?string
     {
-        $connection = $connection ?? config('sql-agent.database.connection');
+        $connection = $this->resolveConnection($connection);
 
         // Extract potential table names from the question
         $potentialTables = $this->extractPotentialTableNames($question, $connection);
@@ -87,107 +83,148 @@ class SchemaIntrospector
     }
 
     /**
-     * Convert a Doctrine Table to a TableSchema DTO.
+     * Build a TableSchema from Laravel's schema information.
      */
-    protected function tableToSchema(Table $table, AbstractSchemaManager $schemaManager): TableSchema
+    protected function buildTableSchema(string $tableName, ?string $connection): TableSchema
     {
-        $primaryKey = $table->getPrimaryKey();
-        $primaryKeyColumns = $primaryKey ? $primaryKey->getColumns() : [];
+        $schemaBuilder = Schema::connection($connection);
 
-        $columns = collect($table->getColumns())
-            ->map(fn (Column $column) => new ColumnInfo(
-                name: $column->getName(),
-                type: $column->getType()->getName(),
-                description: $column->getComment(),
-                nullable: ! $column->getNotnull(),
-                isPrimaryKey: in_array($column->getName(), $primaryKeyColumns),
-                isForeignKey: $this->isForeignKey($column->getName(), $table),
-                foreignTable: $this->getForeignTable($column->getName(), $table),
-                foreignColumn: $this->getForeignColumn($column->getName(), $table),
-                defaultValue: $this->getDefaultValue($column),
-            ));
+        $columns = $schemaBuilder->getColumns($tableName);
+        $indexes = $schemaBuilder->getIndexes($tableName);
+        $foreignKeys = $this->getForeignKeys($tableName, $connection);
 
-        $relationships = collect($table->getForeignKeys())
-            ->map(fn (ForeignKeyConstraint $fk) => new RelationshipInfo(
-                type: 'belongsTo',
-                relatedTable: $fk->getForeignTableName(),
-                foreignKey: $fk->getLocalColumns()[0] ?? '',
-                localKey: $fk->getForeignColumns()[0] ?? 'id',
-            ));
+        // Find primary key columns
+        $primaryKeyColumns = $this->getPrimaryKeyColumns($indexes);
+
+        // Build foreign key lookup
+        $foreignKeyMap = $this->buildForeignKeyMap($foreignKeys);
+
+        // Build column info collection
+        $columnInfos = collect($columns)->map(function (array $column) use ($primaryKeyColumns, $foreignKeyMap) {
+            $columnName = $column['name'];
+            $fkInfo = $foreignKeyMap[$columnName] ?? null;
+
+            return new ColumnInfo(
+                name: $columnName,
+                type: $column['type_name'] ?? $column['type'] ?? 'unknown',
+                description: $column['comment'] ?? null,
+                nullable: $column['nullable'] ?? true,
+                isPrimaryKey: in_array($columnName, $primaryKeyColumns),
+                isForeignKey: $fkInfo !== null,
+                foreignTable: $fkInfo['table'] ?? null,
+                foreignColumn: $fkInfo['column'] ?? null,
+                defaultValue: $this->formatDefaultValue($column['default'] ?? null),
+            );
+        });
+
+        // Build relationships from foreign keys
+        $relationships = collect($foreignKeys)->map(fn (array $fk) => new RelationshipInfo(
+            type: 'belongsTo',
+            relatedTable: $fk['foreign_table'],
+            foreignKey: $fk['columns'][0] ?? '',
+            localKey: $fk['foreign_columns'][0] ?? 'id',
+        ));
+
+        // Try to get table comment
+        $tableComment = $this->getTableComment($tableName, $connection);
 
         return new TableSchema(
-            tableName: $table->getName(),
-            description: $table->getComment(),
-            columns: $columns,
+            tableName: $tableName,
+            description: $tableComment,
+            columns: $columnInfos,
             relationships: $relationships,
         );
     }
 
     /**
-     * Check if a column is a foreign key.
+     * Get primary key columns from indexes.
+     *
+     * @return array<string>
      */
-    protected function isForeignKey(string $columnName, Table $table): bool
+    protected function getPrimaryKeyColumns(array $indexes): array
     {
-        foreach ($table->getForeignKeys() as $fk) {
-            if (in_array($columnName, $fk->getLocalColumns())) {
-                return true;
+        foreach ($indexes as $index) {
+            if ($index['primary'] ?? false) {
+                return $index['columns'] ?? [];
             }
         }
 
-        return false;
+        return [];
     }
 
     /**
-     * Get the foreign table for a column.
+     * Build a map of column names to their foreign key info.
+     *
+     * @return array<string, array{table: string, column: string}>
      */
-    protected function getForeignTable(string $columnName, Table $table): ?string
+    protected function buildForeignKeyMap(array $foreignKeys): array
     {
-        foreach ($table->getForeignKeys() as $fk) {
-            if (in_array($columnName, $fk->getLocalColumns())) {
-                return $fk->getForeignTableName();
+        $map = [];
+
+        foreach ($foreignKeys as $fk) {
+            $localColumns = $fk['columns'] ?? [];
+            $foreignColumns = $fk['foreign_columns'] ?? [];
+            $foreignTable = $fk['foreign_table'] ?? null;
+
+            foreach ($localColumns as $index => $columnName) {
+                $map[$columnName] = [
+                    'table' => $foreignTable,
+                    'column' => $foreignColumns[$index] ?? 'id',
+                ];
             }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Get foreign keys for a table.
+     *
+     * @return array<array{name: string, columns: array, foreign_table: string, foreign_columns: array}>
+     */
+    protected function getForeignKeys(string $tableName, ?string $connection): array
+    {
+        try {
+            return Schema::connection($connection)->getForeignKeys($tableName);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * Get table comment if supported by the database.
+     */
+    protected function getTableComment(string $tableName, ?string $connection): ?string
+    {
+        try {
+            $tables = Schema::connection($connection)->getTables();
+
+            foreach ($tables as $table) {
+                if (($table['name'] ?? '') === $tableName) {
+                    return $table['comment'] ?? null;
+                }
+            }
+        } catch (Throwable) {
+            // Table comments not supported or error occurred
         }
 
         return null;
     }
 
     /**
-     * Get the foreign column for a column.
+     * Format default value for display.
      */
-    protected function getForeignColumn(string $columnName, Table $table): ?string
+    protected function formatDefaultValue(mixed $default): ?string
     {
-        foreach ($table->getForeignKeys() as $fk) {
-            if (in_array($columnName, $fk->getLocalColumns())) {
-                return $fk->getForeignColumns()[0] ?? null;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Get the default value for a column.
-     */
-    protected function getDefaultValue(Column $column): ?string
-    {
-        $default = $column->getDefault();
-
         if ($default === null) {
             return null;
         }
 
+        if (is_bool($default)) {
+            return $default ? 'true' : 'false';
+        }
+
         return (string) $default;
-    }
-
-    /**
-     * Get the schema manager for a connection.
-     */
-    protected function getSchemaManager(?string $connection = null): AbstractSchemaManager
-    {
-        /** @var Connection $dbConnection */
-        $dbConnection = DB::connection($connection);
-
-        return $dbConnection->getDoctrineSchemaManager();
     }
 
     /**
@@ -197,12 +234,11 @@ class SchemaIntrospector
      */
     protected function extractPotentialTableNames(string $question, ?string $connection = null): array
     {
-        $connection = $connection ?? config('sql-agent.database.connection');
-        $schemaManager = $this->getSchemaManager($connection);
+        $connection = $this->resolveConnection($connection);
 
         try {
-            $allTables = $schemaManager->listTableNames();
-        } catch (Exception $e) {
+            $allTables = $this->getTableNames($connection);
+        } catch (Throwable) {
             return [];
         }
 
@@ -215,6 +251,7 @@ class SchemaIntrospector
             // Direct match
             if (str_contains($questionLower, $tableNameLower)) {
                 $potentialTables[] = $tableName;
+
                 continue;
             }
 
@@ -222,6 +259,7 @@ class SchemaIntrospector
             $singular = rtrim($tableNameLower, 's');
             if (str_contains($questionLower, $singular)) {
                 $potentialTables[] = $tableName;
+
                 continue;
             }
 
@@ -249,12 +287,13 @@ class SchemaIntrospector
      */
     public function getTableNames(?string $connection = null): array
     {
-        $connection = $connection ?? config('sql-agent.database.connection');
-        $schemaManager = $this->getSchemaManager($connection);
+        $connection = $this->resolveConnection($connection);
 
         try {
-            return $schemaManager->listTableNames();
-        } catch (Exception $e) {
+            $tables = Schema::connection($connection)->getTables();
+
+            return array_map(fn (array $table) => $table['name'], $tables);
+        } catch (Throwable $e) {
             report($e);
 
             return [];
@@ -266,12 +305,11 @@ class SchemaIntrospector
      */
     public function tableExists(string $tableName, ?string $connection = null): bool
     {
-        $connection = $connection ?? config('sql-agent.database.connection');
-        $schemaManager = $this->getSchemaManager($connection);
+        $connection = $this->resolveConnection($connection);
 
         try {
-            return $schemaManager->tablesExist([$tableName]);
-        } catch (Exception $e) {
+            return Schema::connection($connection)->hasTable($tableName);
+        } catch (Throwable) {
             return false;
         }
     }
@@ -302,5 +340,13 @@ class SchemaIntrospector
         return $tables
             ->map(fn (TableSchema $table) => $table->toPromptString())
             ->implode("\n\n---\n\n");
+    }
+
+    /**
+     * Resolve the connection name.
+     */
+    protected function resolveConnection(?string $connection): ?string
+    {
+        return $connection ?? config('sql-agent.database.connection');
     }
 }

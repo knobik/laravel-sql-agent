@@ -71,11 +71,6 @@ class AnthropicDriver implements LlmDriver
         yield from $this->parseStream($response->getBody());
     }
 
-    public function embed(string|array $text): array
-    {
-        throw new RuntimeException('Anthropic does not support embeddings. Use OpenAI or Ollama for embeddings.');
-    }
-
     public function supportsToolCalling(): bool
     {
         return true;

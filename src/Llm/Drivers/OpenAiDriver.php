@@ -16,8 +16,6 @@ class OpenAiDriver implements LlmDriver
 {
     protected string $model;
 
-    protected string $embeddingModel;
-
     protected float $temperature;
 
     protected int $maxTokens;
@@ -25,7 +23,6 @@ class OpenAiDriver implements LlmDriver
     public function __construct(array $config = [])
     {
         $this->model = $config['model'] ?? 'gpt-4o';
-        $this->embeddingModel = $config['embedding_model'] ?? 'text-embedding-3-small';
         $this->temperature = $config['temperature'] ?? 0.0;
         $this->maxTokens = $config['max_tokens'] ?? 4096;
     }
@@ -118,23 +115,6 @@ class OpenAiDriver implements LlmDriver
                 yield StreamChunk::complete($finishReason, null, $toolCalls);
             }
         }
-    }
-
-    public function embed(string|array $text): array
-    {
-        $input = is_array($text) ? $text : [$text];
-
-        $response = OpenAI::embeddings()->create([
-            'model' => $this->embeddingModel,
-            'input' => $input,
-        ]);
-
-        $embeddings = array_map(
-            fn ($embedding) => $embedding->embedding,
-            $response->embeddings
-        );
-
-        return is_array($text) ? $embeddings : $embeddings[0];
     }
 
     public function supportsToolCalling(): bool

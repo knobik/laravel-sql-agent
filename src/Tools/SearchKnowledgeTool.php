@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Knobik\SqlAgent\Tools;
 
-use Knobik\SqlAgent\Models\Learning;
-use Knobik\SqlAgent\Models\QueryPattern;
+use Knobik\SqlAgent\Search\SearchManager;
+use Knobik\SqlAgent\Search\SearchResult;
 use RuntimeException;
 
 class SearchKnowledgeTool extends BaseTool
 {
+    public function __construct(
+        protected SearchManager $searchManager,
+    ) {}
+
     public function name(): string
     {
         return 'search_knowledge';
@@ -61,16 +65,15 @@ class SearchKnowledgeTool extends BaseTool
 
     protected function searchPatterns(string $query, int $limit): array
     {
-        $patterns = QueryPattern::search($query)
-            ->limit($limit)
-            ->get();
+        $searchResults = $this->searchManager->search($query, 'query_patterns', $limit);
 
-        return $patterns->map(fn (QueryPattern $pattern) => [
-            'name' => $pattern->name,
-            'question' => $pattern->question,
-            'sql' => $pattern->sql,
-            'summary' => $pattern->summary,
-            'tables_used' => $pattern->tables_used,
+        return $searchResults->map(fn (SearchResult $result) => [
+            'name' => $result->model->getAttribute('name'),
+            'question' => $result->model->getAttribute('question'),
+            'sql' => $result->model->getAttribute('sql'),
+            'summary' => $result->model->getAttribute('summary'),
+            'tables_used' => $result->model->getAttribute('tables_used'),
+            'relevance_score' => $result->score,
         ])->toArray();
     }
 
@@ -80,15 +83,14 @@ class SearchKnowledgeTool extends BaseTool
             return [];
         }
 
-        $learnings = Learning::search($query)
-            ->limit($limit)
-            ->get();
+        $searchResults = $this->searchManager->search($query, 'learnings', $limit);
 
-        return $learnings->map(fn (Learning $learning) => [
-            'title' => $learning->title,
-            'description' => $learning->description,
-            'category' => $learning->category?->value,
-            'sql' => $learning->sql,
+        return $searchResults->map(fn (SearchResult $result) => [
+            'title' => $result->model->getAttribute('title'),
+            'description' => $result->model->getAttribute('description'),
+            'category' => $result->model->getAttribute('category')?->value,
+            'sql' => $result->model->getAttribute('sql'),
+            'relevance_score' => $result->score,
         ])->toArray();
     }
 }

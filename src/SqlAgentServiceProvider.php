@@ -14,7 +14,9 @@ use Knobik\SqlAgent\Contracts\Agent;
 use Knobik\SqlAgent\Contracts\LlmDriver;
 use Knobik\SqlAgent\Events\SqlErrorOccurred;
 use Knobik\SqlAgent\Listeners\AutoLearnFromError;
+use Knobik\SqlAgent\Contracts\SearchDriver;
 use Knobik\SqlAgent\Llm\LlmManager;
+use Knobik\SqlAgent\Search\SearchManager;
 use Knobik\SqlAgent\Services\BusinessRulesLoader;
 use Knobik\SqlAgent\Services\ContextBuilder;
 use Knobik\SqlAgent\Services\ErrorAnalyzer;
@@ -26,6 +28,7 @@ use Knobik\SqlAgent\Services\SemanticModelLoader;
 use Knobik\SqlAgent\Tools\IntrospectSchemaTool;
 use Knobik\SqlAgent\Tools\RunSqlTool;
 use Knobik\SqlAgent\Tools\SaveLearningTool;
+use Knobik\SqlAgent\Tools\SaveQueryTool;
 use Knobik\SqlAgent\Tools\SearchKnowledgeTool;
 
 class SqlAgentServiceProvider extends ServiceProvider
@@ -67,6 +70,21 @@ class SqlAgentServiceProvider extends ServiceProvider
             return $app->make(LlmManager::class)->driver();
         });
 
+        // Search Manager
+        $this->app->singleton(SearchManager::class, function ($app) {
+            return new SearchManager($app);
+        });
+
+        // Bind SearchDriver interface to manager's default driver
+        $this->app->bind(SearchDriver::class, function ($app) {
+            return $app->make(SearchManager::class)->driver();
+        });
+
+        // Register SearchKnowledgeTool for DI
+        $this->app->bind(SearchKnowledgeTool::class, function ($app) {
+            return new SearchKnowledgeTool($app->make(SearchManager::class));
+        });
+
         // Tool Registry with default tools
         $this->app->singleton(ToolRegistry::class, function ($app) {
             $registry = new ToolRegistry();
@@ -75,7 +93,8 @@ class SqlAgentServiceProvider extends ServiceProvider
                 new RunSqlTool(),
                 new IntrospectSchemaTool($app->make(SchemaIntrospector::class)),
                 new SaveLearningTool(),
-                new SearchKnowledgeTool(),
+                new SaveQueryTool(),
+                new SearchKnowledgeTool($app->make(SearchManager::class)),
             ]);
 
             return $registry;

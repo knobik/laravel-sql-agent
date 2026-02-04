@@ -19,8 +19,6 @@ class OllamaDriver implements LlmDriver
 
     protected string $model;
 
-    protected string $embeddingModel;
-
     protected float $temperature;
 
     protected array $modelsWithToolSupport = [
@@ -38,7 +36,6 @@ class OllamaDriver implements LlmDriver
     {
         $this->baseUrl = rtrim($config['base_url'] ?? 'http://localhost:11434', '/');
         $this->model = $config['model'] ?? 'llama3.1';
-        $this->embeddingModel = $config['embedding_model'] ?? 'nomic-embed-text';
         $this->temperature = $config['temperature'] ?? 0.0;
     }
 
@@ -95,31 +92,6 @@ class OllamaDriver implements LlmDriver
         }
 
         yield from $this->parseStream($response->getBody());
-    }
-
-    public function embed(string|array $text): array
-    {
-        $texts = is_array($text) ? $text : [$text];
-        $embeddings = [];
-
-        foreach ($texts as $t) {
-            $response = Http::timeout(120)
-                ->post("{$this->baseUrl}/api/embed", [
-                    'model' => $this->embeddingModel,
-                    'input' => $t,
-                ]);
-
-            if (! $response->successful()) {
-                throw new RuntimeException(
-                    "Ollama embedding error: {$response->status()} - {$response->body()}"
-                );
-            }
-
-            $data = $response->json();
-            $embeddings[] = $data['embeddings'][0] ?? $data['embedding'] ?? [];
-        }
-
-        return is_array($text) ? $embeddings : $embeddings[0];
     }
 
     public function supportsToolCalling(): bool

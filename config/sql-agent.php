@@ -41,7 +41,6 @@ return [
             'openai' => [
                 'api_key' => env('OPENAI_API_KEY'),
                 'model' => env('SQL_AGENT_OPENAI_MODEL', 'gpt-4o'),
-                'embedding_model' => env('SQL_AGENT_OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small'),
                 'temperature' => 0.0,
                 'max_tokens' => 4096,
             ],
@@ -56,7 +55,6 @@ return [
             'ollama' => [
                 'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
                 'model' => env('SQL_AGENT_OLLAMA_MODEL', 'llama3.1'),
-                'embedding_model' => env('SQL_AGENT_OLLAMA_EMBEDDING_MODEL', 'nomic-embed-text'),
                 'temperature' => 0.0,
             ],
         ],
@@ -68,18 +66,79 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure the search driver for semantic search.
+    | Supported drivers: "database", "scout", "hybrid", "null"
     |
     */
     'search' => [
         'default' => env('SQL_AGENT_SEARCH_DRIVER', 'database'),
 
         'drivers' => [
+            /*
+            |--------------------------------------------------------------------------
+            | Database Driver Configuration
+            |--------------------------------------------------------------------------
+            |
+            | Native database full-text search with auto-detection of database type.
+            | Supports MySQL, PostgreSQL, SQL Server, and SQLite (LIKE fallback).
+            |
+            */
             'database' => [
-                'min_similarity' => 0.3,
+                // MySQL full-text search configuration
+                'mysql' => [
+                    // NATURAL LANGUAGE MODE or BOOLEAN MODE
+                    'mode' => 'NATURAL LANGUAGE MODE',
+                ],
+
+                // PostgreSQL full-text search configuration
+                'pgsql' => [
+                    // Language for text search (english, spanish, german, etc.)
+                    'language' => 'english',
+                ],
+
+                // SQL Server full-text search configuration (requires full-text catalog)
+                'sqlsrv' => [],
+
+                // Custom index to model class mapping (optional)
+                // 'index_mapping' => [
+                //     'custom_index' => \App\Models\CustomModel::class,
+                // ],
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | Scout Driver Configuration
+            |--------------------------------------------------------------------------
+            |
+            | Laravel Scout integration for external search engines.
+            | Requires models to use the Laravel\Scout\Searchable trait.
+            |
+            */
             'scout' => [
+                // The Scout driver to use (meilisearch, algolia, etc.)
                 'driver' => env('SCOUT_DRIVER', 'meilisearch'),
+
+                // Custom index to model class mapping (optional)
+                // 'index_mapping' => [],
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Hybrid Driver Configuration
+            |--------------------------------------------------------------------------
+            |
+            | Combines Scout as primary with database fallback.
+            | Useful for reliability when external search services may be unavailable.
+            |
+            */
+            'hybrid' => [
+                // Primary search driver
+                'primary' => 'scout',
+
+                // Fallback driver if primary fails
+                'fallback' => 'database',
+
+                // Whether to merge results from both drivers (vs using primary only)
+                'merge_results' => false,
             ],
         ],
     ],

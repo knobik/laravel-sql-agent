@@ -73,14 +73,6 @@ class LlmManager extends Manager implements LlmDriver
     }
 
     /**
-     * Proxy embed call to the default driver.
-     */
-    public function embed(string|array $text): array
-    {
-        return $this->driver()->embed($text);
-    }
-
-    /**
      * Proxy supportsToolCalling call to the default driver.
      */
     public function supportsToolCalling(): bool
