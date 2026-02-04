@@ -77,7 +77,8 @@ it('exports conversation as CSV', function () {
         ->get(route('sql-agent.export.csv', $conversation->id));
 
     $response->assertStatus(200);
-    $response->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+    // Charset case varies between PHP/Laravel versions (UTF-8 vs utf-8)
+    expect($response->headers->get('Content-Type'))->toMatch('/^text\/csv; charset=utf-8$/i');
 });
 
 it('returns 404 for non-existent conversation', function () {
