@@ -24,6 +24,8 @@ class SqlAgent implements Agent
 
     protected array $iterations = [];
 
+    protected ?string $currentQuestion = null;
+
     public function __construct(
         protected LlmDriver $llm,
         protected ToolRegistry $toolRegistry,
@@ -35,6 +37,7 @@ class SqlAgent implements Agent
     public function run(string $question, ?string $connection = null): AgentResponse
     {
         $this->reset();
+        $this->currentQuestion = $question;
 
         try {
             // Build context
@@ -47,7 +50,7 @@ class SqlAgent implements Agent
             $messages = $this->messageBuilder->build($systemPrompt, $question);
 
             // Configure tools for the connection
-            $tools = $this->prepareTools($connection);
+            $tools = $this->prepareTools($connection, $question);
 
             // Run the agent loop
             $maxIterations = config('sql-agent.agent.max_iterations', 10);
@@ -115,6 +118,7 @@ class SqlAgent implements Agent
     public function stream(string $question, ?string $connection = null): Generator
     {
         $this->reset();
+        $this->currentQuestion = $question;
 
         // Build context
         $context = $this->contextBuilder->build($question, $connection);
@@ -126,7 +130,7 @@ class SqlAgent implements Agent
         $messages = $this->messageBuilder->build($systemPrompt, $question);
 
         // Configure tools for the connection
-        $tools = $this->prepareTools($connection);
+        $tools = $this->prepareTools($connection, $question);
 
         // Run the agent loop with streaming
         $maxIterations = config('sql-agent.agent.max_iterations', 10);
@@ -218,19 +222,21 @@ class SqlAgent implements Agent
         $this->lastSql = null;
         $this->lastResults = null;
         $this->iterations = [];
+        $this->currentQuestion = null;
     }
 
     /**
      * @return Tool[]
      */
-    protected function prepareTools(?string $connection): array
+    protected function prepareTools(?string $connection, ?string $question = null): array
     {
         $tools = $this->toolRegistry->all();
 
-        // Configure connection for tools that need it
+        // Configure connection and question for tools that need it
         foreach ($tools as $tool) {
             if ($tool instanceof RunSqlTool) {
                 $tool->setConnection($connection);
+                $tool->setQuestion($question);
             } elseif ($tool instanceof IntrospectSchemaTool) {
                 $tool->setConnection($connection);
             }

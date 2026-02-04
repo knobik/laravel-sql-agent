@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace Knobik\SqlAgent\Tools;
 
 use Illuminate\Support\Facades\DB;
+use Knobik\SqlAgent\Events\SqlErrorOccurred;
 use RuntimeException;
+use Throwable;
 
 class RunSqlTool extends BaseTool
 {
     protected ?string $connection = null;
+
+    protected ?string $question = null;
 
     public function name(): string
     {
@@ -38,6 +42,24 @@ class RunSqlTool extends BaseTool
         return $this;
     }
 
+    /**
+     * Set the original question for error learning context.
+     */
+    public function setQuestion(?string $question): self
+    {
+        $this->question = $question;
+
+        return $this;
+    }
+
+    /**
+     * Get the current question.
+     */
+    public function getQuestion(): ?string
+    {
+        return $this->question;
+    }
+
     protected function handle(array $parameters): mixed
     {
         $sql = trim($parameters['sql'] ?? '');
@@ -51,8 +73,22 @@ class RunSqlTool extends BaseTool
         $connection = $this->connection ?? config('sql-agent.database.connection');
         $maxRows = config('sql-agent.sql.max_rows', 1000);
 
-        // Execute the query
-        $results = DB::connection($connection)->select($sql);
+        try {
+            // Execute the query
+            $results = DB::connection($connection)->select($sql);
+        } catch (Throwable $e) {
+            // Dispatch error event for auto-learning
+            if ($this->question !== null) {
+                SqlErrorOccurred::dispatch(
+                    $sql,
+                    $e->getMessage(),
+                    $this->question,
+                    $connection,
+                );
+            }
+
+            throw $e;
+        }
 
         // Convert to arrays
         $rows = array_map(fn ($row) => (array) $row, $results);
