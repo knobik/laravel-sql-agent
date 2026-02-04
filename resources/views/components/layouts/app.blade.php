@@ -79,6 +79,11 @@
             background: #6b7280;
         }
 
+        /* Override highlight.js backgrounds */
+        pre code.hljs {
+            background: transparent !important;
+        }
+
         /* Markdown content styles */
         .markdown-content p { margin-bottom: 0.75rem; line-height: 1.625; }
         .markdown-content p:last-child { margin-bottom: 0; }

@@ -26,6 +26,6 @@
         </button>
     </div>
     <div class="p-4 overflow-x-auto custom-scrollbar bg-gray-50 dark:bg-gray-900">
-        <pre class="text-sm leading-relaxed"><code class="language-sql" x-init="hljs.highlightElement($el)">{{ $sql }}</code></pre>
+        <pre class="text-sm leading-relaxed !bg-transparent"><code class="language-sql !bg-transparent" x-init="hljs.highlightElement($el)">{{ $sql }}</code></pre>
     </div>
 </div>
