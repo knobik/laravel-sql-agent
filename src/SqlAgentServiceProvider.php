@@ -22,8 +22,10 @@ use Knobik\SqlAgent\Search\SearchManager;
 use Knobik\SqlAgent\Services\BusinessRulesLoader;
 use Knobik\SqlAgent\Services\ContextBuilder;
 use Knobik\SqlAgent\Services\ErrorAnalyzer;
+use Knobik\SqlAgent\Services\EvaluationRunner;
 use Knobik\SqlAgent\Services\KnowledgeLoader;
 use Knobik\SqlAgent\Services\LearningMachine;
+use Knobik\SqlAgent\Services\LlmGrader;
 use Knobik\SqlAgent\Services\QueryPatternSearch;
 use Knobik\SqlAgent\Services\SchemaIntrospector;
 use Knobik\SqlAgent\Services\SemanticModelLoader;
@@ -119,6 +121,18 @@ class SqlAgentServiceProvider extends ServiceProvider
 
         // Bind Agent interface to SqlAgent
         $this->app->bind(Agent::class, SqlAgent::class);
+
+        // Evaluation services
+        $this->app->singleton(LlmGrader::class, function ($app) {
+            return new LlmGrader($app->make(LlmManager::class));
+        });
+
+        $this->app->singleton(EvaluationRunner::class, function ($app) {
+            return new EvaluationRunner(
+                $app->make(Agent::class),
+                $app->make(LlmGrader::class),
+            );
+        });
     }
 
     public function boot(): void

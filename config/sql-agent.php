@@ -226,4 +226,23 @@ return [
 
         'max_rows' => env('SQL_AGENT_MAX_ROWS', 1000),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Evaluation Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure the evaluation and testing system.
+    |
+    */
+    'evaluation' => [
+        // Model to use for LLM grading (should be fast and cheap)
+        'grader_model' => env('SQL_AGENT_GRADER_MODEL', 'gpt-4o-mini'),
+
+        // Pass threshold for LLM grading (0.0 - 1.0)
+        'pass_threshold' => env('SQL_AGENT_EVAL_PASS_THRESHOLD', 0.6),
+
+        // Timeout for each test case in seconds
+        'timeout' => env('SQL_AGENT_EVAL_TIMEOUT', 60),
+    ],
 ];

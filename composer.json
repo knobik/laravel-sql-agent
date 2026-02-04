@@ -17,10 +17,12 @@
         "doctrine/dbal": "^3.0|^4.0"
     },
     "require-dev": {
+        "laravel/pint": "^1.0",
+        "livewire/livewire": "^3.0",
         "orchestra/testbench": "^9.0|^10.0",
         "pestphp/pest": "^2.0|^3.0",
         "pestphp/pest-plugin-laravel": "^2.0|^3.0",
-        "livewire/livewire": "^3.0"
+        "phpstan/phpstan": "^1.10"
     },
     "suggest": {
         "openai-php/laravel": "Required for OpenAI LLM driver",
@@ -29,7 +31,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Knobik\\SqlAgent\\": "src/"
+            "Knobik\\SqlAgent\\": "src/",
+            "Knobik\\SqlAgent\\Database\\": "database/"
         }
     },
     "autoload-dev": {
@@ -46,6 +49,13 @@
                 "SqlAgent": "Knobik\\SqlAgent\\Facades\\SqlAgent"
             }
         }
+    },
+    "scripts": {
+        "test": "pest",
+        "test-coverage": "pest --coverage",
+        "format": "pint",
+        "format-check": "pint --test",
+        "analyse": "phpstan analyse"
     },
     "config": {
         "sort-packages": true,
