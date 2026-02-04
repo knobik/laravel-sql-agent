@@ -121,6 +121,63 @@
         .dark .markdown-content a { color: #fca5a5; }
         .dark .markdown-content a:hover { color: #f87171; }
 
+        /* Table styles */
+        .markdown-content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.875rem;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+        .dark .markdown-content table {
+            border-color: #374151;
+        }
+        .markdown-content th {
+            background: #f9fafb;
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #e5e7eb;
+            white-space: nowrap;
+        }
+        .dark .markdown-content th {
+            background: #1f2937;
+            border-bottom-color: #374151;
+        }
+        .markdown-content td {
+            padding: 0.625rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+        .dark .markdown-content td {
+            border-bottom-color: #374151;
+        }
+        .markdown-content tr:last-child td {
+            border-bottom: none;
+        }
+        .markdown-content tr:hover td {
+            background: #f9fafb;
+        }
+        .dark .markdown-content tr:hover td {
+            background: #1f2937;
+        }
+        /* Ensure inline code in tables looks good */
+        .markdown-content td code:not(pre code) {
+            font-size: 0.8125rem;
+            word-break: break-all;
+        }
+        /* Better spacing for h2, h3 headers */
+        .markdown-content h1 { font-size: 1.5rem; font-weight: 700; margin: 1.25rem 0 0.75rem 0; }
+        .markdown-content h2 { font-size: 1.25rem; font-weight: 600; margin: 1.25rem 0 0.75rem 0; }
+        .markdown-content h3 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem 0; }
+        .markdown-content h4 { font-size: 1rem; font-weight: 600; margin: 1rem 0 0.5rem 0; }
+        .markdown-content h1:first-child,
+        .markdown-content h2:first-child,
+        .markdown-content h3:first-child,
+        .markdown-content h4:first-child { margin-top: 0; }
+
         /* Tool execution tags */
         .markdown-content tool {
             display: inline-flex;

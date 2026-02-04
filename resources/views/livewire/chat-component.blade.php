@@ -1,14 +1,45 @@
 <div class="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-gray-800"
      x-data="{
+        scrollToBottom() {
+            this.$nextTick(() => {
+                const container = document.getElementById('messages-container');
+                if (container) {
+                    container.scrollTo({
+                        top: container.scrollHeight,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        },
+        scrollToBottomInstant() {
+            const container = document.getElementById('messages-container');
+            if (container) {
+                container.scrollTop = container.scrollHeight;
+            }
+        },
         init() {
-            // Scroll to bottom on new messages
-            this.$watch('$wire.streamedContent', () => {
-                this.$nextTick(() => {
-                    const container = document.getElementById('messages-container');
-                    if (container) {
-                        container.scrollTop = container.scrollHeight;
-                    }
-                });
+            // Scroll to bottom on initial load
+            this.$nextTick(() => this.scrollToBottomInstant());
+
+            // Scroll when streaming content updates
+            this.$watch('$wire.streamedContent', (value) => {
+                if (value) {
+                    this.scrollToBottom();
+                }
+            });
+
+            // Scroll when loading state changes
+            this.$watch('$wire.isLoading', (loading) => {
+                if (loading) {
+                    this.scrollToBottom();
+                }
+            });
+
+            // Listen for Livewire updates (new messages added)
+            Livewire.hook('morph.updated', ({ el }) => {
+                if (el.id === 'messages-container' || el.closest('#messages-container')) {
+                    this.scrollToBottom();
+                }
             });
         }
      }"
