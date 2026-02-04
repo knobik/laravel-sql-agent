@@ -21,22 +21,15 @@ class OllamaDriver implements LlmDriver
 
     protected float $temperature;
 
-    protected array $modelsWithToolSupport = [
-        'llama3.1',
-        'llama3.2',
-        'llama3.3',
-        'mistral',
-        'mixtral',
-        'qwen2.5',
-        'command-r',
-        'granite3-dense',
-    ];
+    protected ?array $modelsWithToolSupport;
 
     public function __construct(array $config = [])
     {
         $this->baseUrl = rtrim($config['base_url'] ?? 'http://localhost:11434', '/');
         $this->model = $config['model'] ?? 'llama3.1';
         $this->temperature = $config['temperature'] ?? 0.0;
+        // null = all models support tools (wildcard), array = only listed models
+        $this->modelsWithToolSupport = $config['models_with_tool_support'] ?? null;
     }
 
     public function chat(array $messages, array $tools = []): LlmResponse
@@ -55,6 +48,7 @@ class OllamaDriver implements LlmDriver
         }
 
         $response = Http::timeout(300)
+            ->withHeaders(['Content-Type' => 'application/json'])
             ->post("{$this->baseUrl}/api/chat", $payload);
 
         if (! $response->successful()) {
@@ -81,7 +75,17 @@ class OllamaDriver implements LlmDriver
             $payload['tools'] = ToolFormatter::toOllama($tools);
         }
 
+        // Log payload for debugging if enabled
+        if (config('sql-agent.debug.enabled', false)) {
+            logger()->debug('Ollama request payload', [
+                'model' => $this->model,
+                'tools_count' => count($payload['tools'] ?? []),
+                'payload_json' => json_encode($payload, JSON_PRETTY_PRINT),
+            ]);
+        }
+
         $response = Http::timeout(300)
+            ->withHeaders(['Content-Type' => 'application/json'])
             ->withOptions(['stream' => true])
             ->post("{$this->baseUrl}/api/chat", $payload);
 
@@ -96,6 +100,17 @@ class OllamaDriver implements LlmDriver
 
     public function supportsToolCalling(): bool
     {
+        // null = wildcard, all models support tools
+        if ($this->modelsWithToolSupport === null) {
+            return true;
+        }
+
+        // Empty array = no models support tools
+        if (empty($this->modelsWithToolSupport)) {
+            return false;
+        }
+
+        // Check if current model matches any in the list
         $modelBase = strtolower(explode(':', $this->model)[0]);
 
         foreach ($this->modelsWithToolSupport as $supported) {
@@ -114,11 +129,20 @@ class OllamaDriver implements LlmDriver
         foreach ($messages as $message) {
             // Handle tool results
             if ($message['role'] === 'tool') {
+                $content = $message['content'];
+
+                // Ensure content is a string
+                if (! is_string($content)) {
+                    $content = json_encode($content, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                }
+
+                // Sanitize content to remove any problematic characters
+                // that might confuse Ollama's JSON parser
+                $content = mb_convert_encoding($content, 'UTF-8', 'UTF-8');
+
                 $formatted[] = [
                     'role' => 'tool',
-                    'content' => is_string($message['content'])
-                        ? $message['content']
-                        : json_encode($message['content']),
+                    'content' => $content,
                 ];
 
                 continue;
@@ -135,6 +159,13 @@ class OllamaDriver implements LlmDriver
                         if (isset($toolCall['function']['arguments']) && is_string($toolCall['function']['arguments'])) {
                             $toolCall['function']['arguments'] = json_decode($toolCall['function']['arguments'], true) ?? [];
                         }
+
+                        // Ensure arguments is an object (stdClass) not an array
+                        // This prevents PHP from encoding [] as array instead of {}
+                        if (isset($toolCall['function']['arguments']) && is_array($toolCall['function']['arguments'])) {
+                            $toolCall['function']['arguments'] = (object) $toolCall['function']['arguments'];
+                        }
+
                         $toolCalls[] = $toolCall;
                     }
                 }

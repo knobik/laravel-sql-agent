@@ -3,12 +3,15 @@
     'content' => '',
     'sql' => null,
     'results' => null,
+    'metadata' => null,
     'isStreaming' => false,
 ])
 
 @php
     $isUser = $role === 'user' || $role === \Knobik\SqlAgent\Enums\MessageRole::User;
     $isAssistant = $role === 'assistant' || $role === \Knobik\SqlAgent\Enums\MessageRole::Assistant;
+    $debugEnabled = config('sql-agent.debug.enabled', false);
+    $hasPrompt = $debugEnabled && isset($metadata['prompt']);
 @endphp
 
 <div class="flex gap-4 {{ $isUser ? 'justify-end' : 'justify-start' }}">
@@ -25,8 +28,8 @@
             <div class="markdown-content {{ $isStreaming ? 'stream-cursor' : '' }} {{ $isUser ? 'text-white [&_code]:bg-white/20 [&_code]:text-white' : 'text-gray-700 dark:text-gray-200' }}" x-data x-html="marked.parse(@js($content))"></div>
         </div>
 
-        @if($isAssistant && ($sql || $results))
-            <div x-data="{ showSql: false, showResults: false }" class="mt-3">
+        @if($isAssistant && ($sql || $results || $hasPrompt))
+            <div x-data="{ showSql: false, showResults: false, showPrompt: false }" class="mt-3">
                 <div class="flex flex-wrap gap-2">
                     @if($sql)
                         <button
@@ -51,6 +54,18 @@
                             <span x-text="showResults ? 'Hide Results' : 'Results (' + {{ count($results) }} + ')'"></span>
                         </button>
                     @endif
+
+                    @if($hasPrompt)
+                        <button
+                            @click="showPrompt = !showPrompt"
+                            class="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 hover:bg-amber-200 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-300 font-medium transition-colors"
+                        >
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
+                            </svg>
+                            <span x-text="showPrompt ? 'Hide Prompt' : 'Debug: Show Prompt'"></span>
+                        </button>
+                    @endif
                 </div>
 
                 @if($sql)
@@ -62,6 +77,12 @@
                 @if($results && count($results) > 0)
                     <div x-show="showResults" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="mt-3">
                         <x-sql-agent::results-table :results="$results" />
+                    </div>
+                @endif
+
+                @if($hasPrompt)
+                    <div x-show="showPrompt" x-cloak x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="mt-3">
+                        <x-sql-agent::prompt-preview :prompt="$metadata['prompt'] ?? []" :metadata="$metadata" />
                     </div>
                 @endif
             </div>

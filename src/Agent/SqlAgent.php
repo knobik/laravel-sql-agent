@@ -26,6 +26,8 @@ class SqlAgent implements Agent
 
     protected ?string $currentQuestion = null;
 
+    protected ?array $lastPrompt = null;
+
     public function __construct(
         protected LlmDriver $llm,
         protected ToolRegistry $toolRegistry,
@@ -136,6 +138,18 @@ class SqlAgent implements Agent
 
         // Configure tools for the connection
         $tools = $this->prepareTools($connection, $question);
+
+        // Capture the initial prompt for debugging
+        $this->lastPrompt = [
+            'system' => $systemPrompt,
+            'messages' => $messages,
+            'tools' => array_map(fn (Tool $t) => $t->name(), $tools),
+            'tools_full' => array_map(fn (Tool $t) => [
+                'name' => $t->name(),
+                'description' => $t->description(),
+                'parameters' => $t->parameters(),
+            ], $tools),
+        ];
 
         // Run the agent loop with streaming
         $maxIterations = config('sql-agent.agent.max_iterations', 10);
@@ -250,12 +264,21 @@ class SqlAgent implements Agent
         return $this->iterations;
     }
 
+    /**
+     * Get the last prompt sent to the LLM (for debugging).
+     */
+    public function getLastPrompt(): ?array
+    {
+        return $this->lastPrompt;
+    }
+
     protected function reset(): void
     {
         $this->lastSql = null;
         $this->lastResults = null;
         $this->iterations = [];
         $this->currentQuestion = null;
+        $this->lastPrompt = null;
     }
 
     /**

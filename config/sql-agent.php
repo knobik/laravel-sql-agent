@@ -56,6 +56,9 @@ return [
                 'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
                 'model' => env('SQL_AGENT_OLLAMA_MODEL', 'llama3.1'),
                 'temperature' => 0.0,
+                // Models that support tool/function calling.
+                // null = all models (wildcard), [] = none, ['model1', 'model2'] = specific models
+                'models_with_tool_support' => null,
             ],
         ],
     ],
@@ -244,5 +247,17 @@ return [
 
         // Timeout for each test case in seconds
         'timeout' => env('SQL_AGENT_EVAL_TIMEOUT', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Debug Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure debug features for development and troubleshooting.
+    |
+    */
+    'debug' => [
+        'enabled' => env('SQL_AGENT_DEBUG', false),
     ],
 ];

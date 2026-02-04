@@ -115,6 +115,9 @@ class MessageBuilder
 
     /**
      * Format tool result data for the message.
+     *
+     * Note: We use compact JSON (no pretty print) to avoid issues with some LLM
+     * providers that have trouble parsing nested JSON with newlines in content.
      */
     protected function formatToolResultData(mixed $data): string
     {
@@ -123,18 +126,18 @@ class MessageBuilder
         }
 
         if (is_array($data)) {
-            return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
         if (is_object($data) && method_exists($data, 'toArray')) {
-            return json_encode($data->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+            return json_encode($data->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         }
 
         if (is_object($data) && method_exists($data, '__toString')) {
             return (string) $data;
         }
 
-        return json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     /**

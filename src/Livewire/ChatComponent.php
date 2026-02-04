@@ -124,6 +124,10 @@ class ChatComponent extends Component
 
     protected function processWithAgent(string $question): void
     {
+        $debugEnabled = config('sql-agent.debug.enabled', false);
+        $debugChunks = [];
+        $startTime = microtime(true);
+
         try {
             /** @var SqlAgent $agent */
             $agent = app(SqlAgent::class);
@@ -135,6 +139,21 @@ class ChatComponent extends Component
 
             // Stream the response with conversation history
             foreach ($agent->stream($question, $this->connection, $history) as $chunk) {
+                // Capture raw chunks for debugging
+                if ($debugEnabled) {
+                    $debugChunks[] = [
+                        'time' => round((microtime(true) - $startTime) * 1000, 2),
+                        'content' => $chunk->content,
+                        'hasContent' => $chunk->hasContent(),
+                        'isComplete' => $chunk->isComplete(),
+                        'finishReason' => $chunk->finishReason,
+                        'toolCalls' => array_map(fn ($tc) => [
+                            'name' => $tc->name,
+                            'arguments' => $tc->arguments,
+                        ], $chunk->toolCalls ?? []),
+                    ];
+                }
+
                 if ($chunk->hasContent()) {
                     $fullContent .= $chunk->content;
                     $this->streamedContent = $fullContent;
@@ -156,6 +175,17 @@ class ChatComponent extends Component
             $this->currentSql = $agent->getLastSql();
             $this->currentResults = $agent->getLastResults();
 
+            // Capture debug metadata if enabled
+            $metadata = [];
+            if ($debugEnabled) {
+                $metadata['prompt'] = $agent->getLastPrompt();
+                $metadata['iterations'] = $agent->getIterations();
+                $metadata['chunks'] = $debugChunks;
+                $metadata['timing'] = [
+                    'total_ms' => round((microtime(true) - $startTime) * 1000, 2),
+                ];
+            }
+
             // Save assistant message
             Message::create([
                 'conversation_id' => $this->conversationId,
@@ -163,15 +193,35 @@ class ChatComponent extends Component
                 'content' => $fullContent,
                 'sql' => $this->currentSql,
                 'results' => $this->currentResults,
+                'metadata' => $metadata ?: null,
             ]);
         } catch (\Throwable $e) {
             $errorMessage = 'An error occurred: '.$e->getMessage();
+
+            $metadata = ['error' => true];
+            if ($debugEnabled) {
+                $metadata['error_details'] = [
+                    'message' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                    'trace' => array_slice($e->getTrace(), 0, 5),
+                ];
+                $metadata['chunks'] = $debugChunks;
+                $metadata['timing'] = [
+                    'total_ms' => round((microtime(true) - $startTime) * 1000, 2),
+                ];
+                // Include prompt data if available (agent was created before error)
+                if (isset($agent)) {
+                    $metadata['prompt'] = $agent->getLastPrompt();
+                    $metadata['iterations'] = $agent->getIterations();
+                }
+            }
 
             Message::create([
                 'conversation_id' => $this->conversationId,
                 'role' => MessageRole::Assistant,
                 'content' => $errorMessage,
-                'metadata' => ['error' => true],
+                'metadata' => $metadata,
             ]);
 
             $this->streamedContent = $errorMessage;

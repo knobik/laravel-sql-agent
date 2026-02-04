@@ -175,6 +175,7 @@
                     :content="$msg['content']"
                     :sql="$msg['sql'] ?? null"
                     :results="$msg['results'] ?? null"
+                    :metadata="$msg['metadata'] ?? null"
                 />
             @endforeach
 
