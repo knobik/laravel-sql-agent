@@ -166,6 +166,7 @@ class SqlAgentServiceProvider extends ServiceProvider
                 Console\Commands\ExportLearningsCommand::class,
                 Console\Commands\ImportLearningsCommand::class,
                 Console\Commands\PruneLearningsCommand::class,
+                Console\Commands\PurgeCommand::class,
             ]);
 
             // Publishables
