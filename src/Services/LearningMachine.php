@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Cache;
 use Knobik\SqlAgent\Enums\LearningCategory;
 use Knobik\SqlAgent\Events\LearningCreated;
 use Knobik\SqlAgent\Models\Learning;
+use Knobik\SqlAgent\Support\UserResolver;
 
 class LearningMachine
 {
@@ -34,7 +35,7 @@ class LearningMachine
             'category' => $category,
             'sql' => $sql,
             'metadata' => $metadata,
-            'user_id' => auth()->id(),
+            'user_id' => app(UserResolver::class)->id(),
         ]);
 
         LearningCreated::dispatch($learning);
@@ -169,7 +170,7 @@ class LearningMachine
                     $data['metadata'] ?? [],
                     ['imported_at' => now()->toIso8601String()],
                 ),
-                'user_id' => auth()->id(),
+                'user_id' => app(UserResolver::class)->id(),
             ]);
 
             $imported++;

@@ -22,7 +22,10 @@ class Conversation extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(config('auth.providers.users.model', 'App\\Models\\User'));
+        $model = config('sql-agent.user.model')
+            ?? config('auth.providers.users.model', 'App\\Models\\User');
+
+        return $this->belongsTo($model);
     }
 
     public function messages(): HasMany

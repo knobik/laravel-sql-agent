@@ -29,6 +29,7 @@ use Knobik\SqlAgent\Services\LlmGrader;
 use Knobik\SqlAgent\Services\QueryPatternSearch;
 use Knobik\SqlAgent\Services\SchemaIntrospector;
 use Knobik\SqlAgent\Services\SemanticModelLoader;
+use Knobik\SqlAgent\Support\UserResolver;
 use Knobik\SqlAgent\Tools\IntrospectSchemaTool;
 use Knobik\SqlAgent\Tools\RunSqlTool;
 use Knobik\SqlAgent\Tools\SaveLearningTool;
@@ -40,6 +41,9 @@ class SqlAgentServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/sql-agent.php', 'sql-agent');
+
+        // User resolver for optional user tracking
+        $this->app->singleton(UserResolver::class);
 
         // Register services as singletons
         $this->app->singleton(SemanticModelLoader::class);

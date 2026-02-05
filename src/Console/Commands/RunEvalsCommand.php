@@ -29,14 +29,11 @@ class RunEvalsCommand extends Command
 
     protected $description = 'Run evaluation tests';
 
-    public function __construct(
-        protected EvaluationRunner $evaluationRunner,
-    ) {
-        parent::__construct();
-    }
+    protected EvaluationRunner $evaluationRunner;
 
-    public function handle(): int
+    public function handle(EvaluationRunner $evaluationRunner): int
     {
+        $this->evaluationRunner = $evaluationRunner;
         // Seed test cases if requested
         if ($this->option('seed')) {
             info('Seeding test cases...');

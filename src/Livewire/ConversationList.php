@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Knobik\SqlAgent\Livewire;
 
-use Illuminate\Support\Facades\Auth;
 use Knobik\SqlAgent\Models\Conversation;
+use Knobik\SqlAgent\Support\UserResolver;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -28,8 +28,20 @@ class ConversationList extends Component
     #[Computed]
     public function conversations(): array
     {
-        $query = Conversation::forUser(Auth::id())
-            ->orderByDesc('updated_at');
+        $userResolver = app(UserResolver::class);
+
+        $query = Conversation::query()->orderByDesc('updated_at');
+
+        // Filter by user only if user tracking is enabled
+        if ($userResolver->isEnabled()) {
+            $userId = $userResolver->id();
+            if ($userId !== null) {
+                $query->forUser($userId);
+            } else {
+                // No authenticated user, show no conversations
+                return [];
+            }
+        }
 
         if (! empty($this->search)) {
             $query->where('title', 'like', '%'.$this->search.'%');
@@ -69,8 +81,16 @@ class ConversationList extends Component
         }
 
         $conversation = Conversation::find($this->deleteConversationId);
+        $userResolver = app(UserResolver::class);
 
-        if (! $conversation || $conversation->user_id !== Auth::id()) {
+        if (! $conversation) {
+            $this->cancelDelete();
+
+            return;
+        }
+
+        // Check ownership only if user tracking is enabled
+        if ($userResolver->isEnabled() && $conversation->user_id !== $userResolver->id()) {
             $this->cancelDelete();
 
             return;

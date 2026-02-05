@@ -285,6 +285,43 @@ You can use a separate database for SqlAgent's internal tables by setting `SQL_A
 ],
 ```
 
+### User Configuration
+
+By default, user tracking is disabled. Enable it to scope conversations and learnings per user.
+
+```php
+'user' => [
+    'enabled' => env('SQL_AGENT_USER_ENABLED', false),
+    'model' => null,
+    'resolver' => null,
+],
+```
+
+**Enable user tracking:**
+
+```env
+SQL_AGENT_USER_ENABLED=true
+```
+
+**Custom auth guard:**
+
+```php
+'user' => [
+    'enabled' => true,
+    'model' => \App\Models\Admin::class,
+    'resolver' => fn() => auth('admin')->id(),
+],
+```
+
+**Multi-tenancy:**
+
+```php
+'user' => [
+    'enabled' => true,
+    'resolver' => fn() => tenant()->owner_id,
+],
+```
+
 ### SQL Safety Configuration
 
 ```php

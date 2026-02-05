@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Knobik\SqlAgent\Livewire;
 
-use Illuminate\Support\Facades\Auth;
 use Knobik\SqlAgent\Agent\SqlAgent;
 use Knobik\SqlAgent\Enums\MessageRole;
 use Knobik\SqlAgent\Models\Conversation;
 use Knobik\SqlAgent\Models\Message;
+use Knobik\SqlAgent\Support\UserResolver;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -34,10 +34,14 @@ class ChatComponent extends Component
         $this->conversationId = $conversationId;
         $this->connection = config('sql-agent.database.connection') ?: config('database.default');
 
-        // Verify conversation belongs to current user
+        // Verify conversation belongs to current user (if user tracking enabled)
         if ($this->conversationId) {
             $conversation = Conversation::find($this->conversationId);
-            if (! $conversation || $conversation->user_id !== Auth::id()) {
+            $userResolver = app(UserResolver::class);
+
+            if (! $conversation) {
+                $this->conversationId = null;
+            } elseif ($userResolver->isEnabled() && $conversation->user_id !== $userResolver->id()) {
                 $this->conversationId = null;
             }
         }
@@ -96,7 +100,7 @@ class ChatComponent extends Component
         // Create or get conversation
         if (! $this->conversationId) {
             $conversation = Conversation::create([
-                'user_id' => Auth::id(),
+                'user_id' => app(UserResolver::class)->id(),
                 'connection' => $this->connection,
             ]);
             $this->conversationId = $conversation->id;
@@ -234,8 +238,14 @@ class ChatComponent extends Component
     public function loadConversation(int $conversationId): void
     {
         $conversation = Conversation::find($conversationId);
+        $userResolver = app(UserResolver::class);
 
-        if (! $conversation || $conversation->user_id !== Auth::id()) {
+        if (! $conversation) {
+            return;
+        }
+
+        // Check ownership only if user tracking is enabled
+        if ($userResolver->isEnabled() && $conversation->user_id !== $userResolver->id()) {
             return;
         }
 

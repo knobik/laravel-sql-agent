@@ -28,6 +28,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | User Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Enable to scope conversations/learnings per user.
+    | Use 'resolver' for custom auth: fn() => auth('admin')->id()
+    |
+    */
+    'user' => [
+        'enabled' => env('SQL_AGENT_USER_ENABLED', false),
+        'model' => null,
+        'resolver' => null,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | LLM Configuration
     |--------------------------------------------------------------------------
     |

@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::connection($this->getConnection())->create('sql_agent_conversations', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->string('title')->nullable();
             $table->string('connection')->default('default');
             $table->timestamps();

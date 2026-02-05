@@ -7,8 +7,8 @@ namespace Knobik\SqlAgent\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Auth;
 use Knobik\SqlAgent\Models\Conversation;
+use Knobik\SqlAgent\Support\UserResolver;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
@@ -108,8 +108,9 @@ class ExportController extends Controller
             return null;
         }
 
-        // Check ownership
-        if ($conversation->user_id !== Auth::id()) {
+        // Check ownership only if user tracking is enabled
+        $userResolver = app(UserResolver::class);
+        if ($userResolver->isEnabled() && $conversation->user_id !== $userResolver->id()) {
             return null;
         }
 
