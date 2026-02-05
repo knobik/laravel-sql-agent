@@ -71,6 +71,10 @@ return [
                 'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
                 'model' => env('SQL_AGENT_OLLAMA_MODEL', 'llama3.1'),
                 'temperature' => 0.0,
+                // Enable thinking/reasoning mode for supported models.
+                // Most models accept true/false, but GPT-OSS requires "low", "medium", or "high".
+                // See: https://docs.ollama.com/capabilities/thinking
+                'think' => env('SQL_AGENT_OLLAMA_THINK', true),
                 // Models that support tool/function calling.
                 // null = all models (wildcard), [] = none, ['model1', 'model2'] = specific models
                 'models_with_tool_support' => null,

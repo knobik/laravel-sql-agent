@@ -21,6 +21,8 @@ class OllamaDriver implements LlmDriver
 
     protected float $temperature;
 
+    protected string|bool $think;
+
     protected ?array $modelsWithToolSupport;
 
     public function __construct(array $config = [])
@@ -28,6 +30,7 @@ class OllamaDriver implements LlmDriver
         $this->baseUrl = rtrim($config['base_url'] ?? 'http://localhost:11434', '/');
         $this->model = $config['model'] ?? 'llama3.1';
         $this->temperature = $config['temperature'] ?? 0.0;
+        $this->think = $config['think'] ?? true;
         // null = all models support tools (wildcard), array = only listed models
         $this->modelsWithToolSupport = $config['models_with_tool_support'] ?? null;
     }
@@ -38,9 +41,7 @@ class OllamaDriver implements LlmDriver
             'model' => $this->model,
             'messages' => $this->formatMessages($messages),
             'stream' => false,
-            'options' => [
-                'temperature' => $this->temperature,
-            ],
+            'options' => $this->buildOptions(),
         ];
 
         if (! empty($tools) && $this->supportsToolCalling()) {
@@ -66,9 +67,7 @@ class OllamaDriver implements LlmDriver
             'model' => $this->model,
             'messages' => $this->formatMessages($messages),
             'stream' => true,
-            'options' => [
-                'temperature' => $this->temperature,
-            ],
+            'options' => $this->buildOptions(),
         ];
 
         if (! empty($tools) && $this->supportsToolCalling()) {
@@ -120,6 +119,19 @@ class OllamaDriver implements LlmDriver
         }
 
         return false;
+    }
+
+    protected function buildOptions(): array
+    {
+        $options = [
+            'temperature' => $this->temperature,
+        ];
+
+        if ($this->think !== false) {
+            $options['think'] = $this->think;
+        }
+
+        return $options;
     }
 
     protected function formatMessages(array $messages): array
