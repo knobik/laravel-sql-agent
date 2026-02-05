@@ -6,6 +6,7 @@ namespace Knobik\SqlAgent\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Knobik\SqlAgent\Agent\SqlAgent;
 use Knobik\SqlAgent\Enums\MessageRole;
 use Knobik\SqlAgent\Models\Conversation;
@@ -73,6 +74,7 @@ class StreamController extends Controller
             $fullContent = '';
             $lastSql = null;
             $lastResults = null;
+            $cancelled = false;
 
             try {
                 foreach ($agent->stream($question, $connection, $history) as $chunk) {
@@ -81,36 +83,49 @@ class StreamController extends Controller
                         $this->sendEvent('content', ['text' => $chunk->content]);
                     }
 
+                    // Check if the client disconnected (user cancelled)
+                    if (connection_aborted()) {
+                        $cancelled = true;
+                        Log::info('SQL Agent: Stream cancelled by user', [
+                            'conversation_id' => $conversationId,
+                            'question' => $question,
+                        ]);
+                        break;
+                    }
+
                     if ($chunk->isComplete()) {
                         break;
                     }
                 }
 
-                $lastSql = $agent->getLastSql();
-                $lastResults = $agent->getLastResults();
+                // Only save assistant message if not cancelled
+                if (! $cancelled) {
+                    $lastSql = $agent->getLastSql();
+                    $lastResults = $agent->getLastResults();
 
-                // Save assistant message
-                $metadata = [];
-                if (config('sql-agent.debug.enabled', false)) {
-                    $metadata['prompt'] = $agent->getLastPrompt();
-                    $metadata['iterations'] = $agent->getIterations();
+                    // Save assistant message
+                    $metadata = [];
+                    if (config('sql-agent.debug.enabled', false)) {
+                        $metadata['prompt'] = $agent->getLastPrompt();
+                        $metadata['iterations'] = $agent->getIterations();
+                    }
+
+                    Message::create([
+                        'conversation_id' => $conversationId,
+                        'role' => MessageRole::Assistant,
+                        'content' => $fullContent,
+                        'sql' => $lastSql,
+                        'results' => $lastResults,
+                        'metadata' => $metadata ?: null,
+                    ]);
+
+                    // Send completion event
+                    $this->sendEvent('done', [
+                        'sql' => $lastSql,
+                        'hasResults' => ! empty($lastResults),
+                        'resultCount' => $lastResults ? count($lastResults) : 0,
+                    ]);
                 }
-
-                Message::create([
-                    'conversation_id' => $conversationId,
-                    'role' => MessageRole::Assistant,
-                    'content' => $fullContent,
-                    'sql' => $lastSql,
-                    'results' => $lastResults,
-                    'metadata' => $metadata ?: null,
-                ]);
-
-                // Send completion event
-                $this->sendEvent('done', [
-                    'sql' => $lastSql,
-                    'hasResults' => ! empty($lastResults),
-                    'resultCount' => $lastResults ? count($lastResults) : 0,
-                ]);
 
             } catch (\Throwable $e) {
                 $errorMessage = 'An error occurred: '.$e->getMessage();

@@ -13,6 +13,30 @@ parameters:
 			path: src/Http/Controllers/ExportController.php
 
 		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Collection<int, Knobik\\SqlAgent\\Models\\Conversation>\|Knobik\\SqlAgent\\Models\\Conversation::\$user_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/StreamController.php
+
+		-
+			message: '#^Access to an undefined property Knobik\\SqlAgent\\Models\\Message::\$role\.$#'
+			identifier: property.notFound
+			count: 2
+			path: src/Http/Controllers/StreamController.php
+
+		-
+			message: '#^Access to an undefined property Knobik\\SqlAgent\\Models\\Message::\$content\.$#'
+			identifier: property.notFound
+			count: 1
+			path: src/Http/Controllers/StreamController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection<int,Knobik\\SqlAgent\\Models\\Message>::map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: src/Http/Controllers/StreamController.php
+
+		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
 			identifier: property.notFound
 			count: 2
@@ -88,24 +112,6 @@ parameters:
 			message: '#^Access to an undefined property Knobik\\SqlAgent\\Models\\Conversation\:\:\$user_id\.$#'
 			identifier: property.notFound
 			count: 2
-			path: src/Livewire/ChatComponent.php
-
-		-
-			message: '#^Access to an undefined property Knobik\\SqlAgent\\Models\\Message\:\:\$content\.$#'
-			identifier: property.notFound
-			count: 1
-			path: src/Livewire/ChatComponent.php
-
-		-
-			message: '#^Access to an undefined property Knobik\\SqlAgent\\Models\\Message\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 2
-			path: src/Livewire/ChatComponent.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Knobik\\SqlAgent\\Models\\Message\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
 			path: src/Livewire/ChatComponent.php
 
 		-

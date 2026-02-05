@@ -230,18 +230,31 @@
                     ></textarea>
                 </div>
 
+                {{-- Send button (shown when not streaming) --}}
                 <button
+                    x-show="!isStreaming"
                     type="submit"
-                    :disabled="isStreaming || !messageInput.trim()"
+                    :disabled="!messageInput.trim()"
                     class="h-12 px-5 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed shadow-sm hover:shadow-md disabled:shadow-none"
                 >
-                    {{-- Spinner shown during streaming --}}
-                    <x-sql-agent::spinner x-show="isStreaming" class="w-5 h-5" />
-                    {{-- Send icon shown when not streaming --}}
-                    <svg x-show="!isStreaming" x-cloak class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
                     </svg>
                     <span class="hidden sm:inline">Send</span>
+                </button>
+
+                {{-- Cancel button (shown during streaming) --}}
+                <button
+                    x-show="isStreaming"
+                    x-cloak
+                    type="button"
+                    @click="cancelStream()"
+                    class="h-12 px-5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow-md"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span class="hidden sm:inline">Cancel</span>
                 </button>
             </div>
 
@@ -271,6 +284,7 @@ function chatStream() {
         pendingUserMessage: '',
         conversationId: @json($conversationId),
         connection: @json($connection),
+        abortController: null,
 
         // Show streaming UI while streaming or finishing
         get showStreamingUI() {
@@ -329,6 +343,7 @@ function chatStream() {
             this.messageInput = '';
             this.isStreaming = true;
             this.streamedContent = '';
+            this.abortController = new AbortController();
 
             this.scrollToBottom();
 
@@ -345,6 +360,7 @@ function chatStream() {
                         conversation_id: this.conversationId,
                         connection: this.connection,
                     }),
+                    signal: this.abortController.signal,
                 });
 
                 if (!response.ok) {
@@ -372,6 +388,19 @@ function chatStream() {
                     }
                 }
             } catch (error) {
+                // Check if this was a user-initiated cancellation
+                if (error.name === 'AbortError') {
+                    console.log('Stream cancelled by user');
+                    // Reset state without showing error
+                    this.isStreaming = false;
+                    this.isFinishing = false;
+                    this.streamedContent = '';
+                    this.pendingUserMessage = '';
+                    this.abortController = null;
+                    // Refresh to show any saved messages
+                    await this.$wire.$refresh();
+                    return;
+                }
                 console.error('Stream error:', error);
                 this.streamedContent = 'An error occurred while processing your request.';
                 this.renderContent();
@@ -388,6 +417,18 @@ function chatStream() {
             // Now hide the streaming UI (messages are loaded)
             this.isFinishing = false;
             this.streamedContent = '';
+            this.abortController = null;
+        },
+
+        cancelStream() {
+            if (this.abortController) {
+                this.abortController.abort();
+                this.abortController = null;
+            }
+            this.isStreaming = false;
+            this.isFinishing = false;
+            this.streamedContent = '';
+            this.pendingUserMessage = '';
         },
 
         handleEvent(data) {
