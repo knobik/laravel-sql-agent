@@ -6,6 +6,7 @@ namespace Knobik\SqlAgent\Llm\Drivers;
 
 use Generator;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use Knobik\SqlAgent\Contracts\LlmDriver;
 use Knobik\SqlAgent\Contracts\LlmResponse;
 use Knobik\SqlAgent\Llm\StreamChunk;
@@ -37,6 +38,8 @@ class AnthropicDriver implements LlmDriver
 
     public function chat(array $messages, array $tools = []): LlmResponse
     {
+        $this->ensureApiKeyConfigured();
+
         $payload = $this->buildPayload($messages, $tools);
 
         $response = Http::withHeaders($this->headers())
@@ -54,6 +57,8 @@ class AnthropicDriver implements LlmDriver
 
     public function stream(array $messages, array $tools = []): Generator
     {
+        $this->ensureApiKeyConfigured();
+
         $payload = $this->buildPayload($messages, $tools);
         $payload['stream'] = true;
 
@@ -285,6 +290,15 @@ class AnthropicDriver implements LlmDriver
 
         if (trim($buffer) !== '') {
             yield trim($buffer);
+        }
+    }
+
+    protected function ensureApiKeyConfigured(): void
+    {
+        if (empty($this->apiKey)) {
+            throw new InvalidArgumentException(
+                'Anthropic API key not configured. Set ANTHROPIC_API_KEY in your .env file.'
+            );
         }
     }
 }

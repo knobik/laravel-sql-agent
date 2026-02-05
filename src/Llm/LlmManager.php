@@ -27,24 +27,12 @@ class LlmManager extends Manager implements LlmDriver
     {
         $config = $this->config->get('sql-agent.llm.drivers.openai', []);
 
-        if (empty($config['api_key'])) {
-            throw new InvalidArgumentException(
-                'OpenAI API key not configured. Set OPENAI_API_KEY in your .env file.'
-            );
-        }
-
         return new OpenAiDriver($config);
     }
 
     public function createAnthropicDriver(): AnthropicDriver
     {
         $config = $this->config->get('sql-agent.llm.drivers.anthropic', []);
-
-        if (empty($config['api_key'])) {
-            throw new InvalidArgumentException(
-                'Anthropic API key not configured. Set ANTHROPIC_API_KEY in your .env file.'
-            );
-        }
 
         return new AnthropicDriver($config);
     }

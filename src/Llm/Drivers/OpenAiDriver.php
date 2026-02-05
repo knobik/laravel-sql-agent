@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Knobik\SqlAgent\Llm\Drivers;
 
 use Generator;
+use InvalidArgumentException;
 use Knobik\SqlAgent\Contracts\LlmDriver;
 use Knobik\SqlAgent\Contracts\LlmResponse;
 use Knobik\SqlAgent\Llm\StreamChunk;
@@ -14,6 +15,8 @@ use OpenAI\Laravel\Facades\OpenAI;
 
 class OpenAiDriver implements LlmDriver
 {
+    protected string $apiKey;
+
     protected string $model;
 
     protected float $temperature;
@@ -22,6 +25,7 @@ class OpenAiDriver implements LlmDriver
 
     public function __construct(array $config = [])
     {
+        $this->apiKey = $config['api_key'] ?? '';
         $this->model = $config['model'] ?? 'gpt-4o';
         $this->temperature = $config['temperature'] ?? 0.0;
         $this->maxTokens = $config['max_tokens'] ?? 4096;
@@ -29,6 +33,7 @@ class OpenAiDriver implements LlmDriver
 
     public function chat(array $messages, array $tools = []): LlmResponse
     {
+        $this->ensureApiKeyConfigured();
         $params = [
             'model' => $this->model,
             'messages' => $messages,
@@ -48,6 +53,8 @@ class OpenAiDriver implements LlmDriver
 
     public function stream(array $messages, array $tools = []): Generator
     {
+        $this->ensureApiKeyConfigured();
+
         $params = [
             'model' => $this->model,
             'messages' => $messages,
@@ -152,5 +159,14 @@ class OpenAiDriver implements LlmDriver
             promptTokens: $response->usage?->promptTokens,
             completionTokens: $response->usage?->completionTokens,
         );
+    }
+
+    protected function ensureApiKeyConfigured(): void
+    {
+        if (empty($this->apiKey)) {
+            throw new InvalidArgumentException(
+                'OpenAI API key not configured. Set OPENAI_API_KEY in your .env file.'
+            );
+        }
     }
 }
