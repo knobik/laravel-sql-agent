@@ -143,10 +143,36 @@
                             @if(!empty($iteration['tool_calls']))
                                 <div class="mb-2">
                                     <div class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Tool Calls:</div>
-                                    @foreach($iteration['tool_calls'] as $toolCall)
-                                        <div class="bg-gray-50 dark:bg-gray-900 rounded p-2 mb-1">
-                                            <span class="text-xs font-mono text-purple-600 dark:text-purple-400">{{ $toolCall['name'] ?? 'unknown' }}</span>
+                                    @foreach($iteration['tool_calls'] as $tcIndex => $toolCall)
+                                        @php
+                                            $toolResult = $iteration['tool_results'][$tcIndex] ?? null;
+                                        @endphp
+                                        <div class="bg-gray-50 dark:bg-gray-900 rounded p-2 mb-1" x-data="{ showResult: false }">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-mono text-purple-600 dark:text-purple-400">{{ $toolCall['name'] ?? 'unknown' }}</span>
+                                                @if($toolResult)
+                                                    <button
+                                                        @click="showResult = !showResult"
+                                                        class="text-xs px-2 py-0.5 rounded {{ ($toolResult['success'] ?? false) ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' }} hover:opacity-80 transition-opacity"
+                                                    >
+                                                        <span x-text="showResult ? 'Hide Result' : 'Show Result'"></span>
+                                                    </button>
+                                                @endif
+                                            </div>
                                             <pre class="text-xs text-gray-600 dark:text-gray-400 mt-1 whitespace-pre-wrap">{{ json_encode($toolCall['arguments'] ?? [], JSON_PRETTY_PRINT) }}</pre>
+
+                                            @if($toolResult)
+                                                <div x-show="showResult" x-cloak x-transition class="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                                    <div class="text-xs font-medium mb-1 {{ ($toolResult['success'] ?? false) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                                        {{ ($toolResult['success'] ?? false) ? 'Result:' : 'Error:' }}
+                                                    </div>
+                                                    @if($toolResult['success'] ?? false)
+                                                        <pre class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">{{ json_encode($toolResult['data'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                                    @else
+                                                        <pre class="text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">{{ $toolResult['error'] ?? 'Unknown error' }}</pre>
+                                                    @endif
+                                                </div>
+                                            @endif
                                         </div>
                                     @endforeach
                                 </div>

@@ -29,7 +29,7 @@ class SearchKnowledgeTool extends BaseTool
         return $this->objectSchema([
             'query' => $this->stringProperty('The search query to find relevant knowledge.'),
             'type' => $this->stringProperty(
-                'Optional: Filter by knowledge type.',
+                "Filter results: 'all' (default), 'patterns' (saved query patterns), or 'learnings' (discovered fixes/gotchas).",
                 ['all', 'patterns', 'learnings']
             ),
             'limit' => $this->integerProperty('Maximum number of results to return.', 1, 20),
@@ -44,6 +44,11 @@ class SearchKnowledgeTool extends BaseTool
 
         if (empty($query)) {
             throw new RuntimeException('Search query cannot be empty.');
+        }
+
+        // Default to 'all' if invalid type provided
+        if (! in_array($type, ['all', 'patterns', 'learnings'])) {
+            $type = 'all';
         }
 
         $results = [];

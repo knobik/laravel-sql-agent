@@ -47,7 +47,7 @@ Save a successful query pattern for reuse. Use when a query correctly answers a 
 4. **If Error**: Diagnose → `introspect_schema` → fix → `save_learning` about what went wrong.
 5. **Provide Insights**: Not just data — explain what it means in context.
 @if(config('sql-agent.learning.enabled', true))
-6. **Save Patterns**: Offer `save_validated_query` if the query is reusable.
+6. **Save Patterns**: Always use `save_validated_query` for queries that could answer similar questions in the future.
 @endif
 
 @if(config('sql-agent.learning.enabled', true))

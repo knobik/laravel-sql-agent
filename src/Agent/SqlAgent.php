@@ -60,7 +60,7 @@ class SqlAgent implements Agent
             for ($i = 0; $i < $maxIterations; $i++) {
                 $response = $this->llm->chat($messages, $tools);
 
-                $this->iterations[] = [
+                $iterationData = [
                     'iteration' => $i + 1,
                     'response' => $response->content,
                     'tool_calls' => array_map(
@@ -68,10 +68,13 @@ class SqlAgent implements Agent
                         $response->toolCalls
                     ),
                     'finish_reason' => $response->finishReason,
+                    'tool_results' => [],
                 ];
 
                 // If no tool calls, we're done
                 if (! $response->hasToolCalls()) {
+                    $this->iterations[] = $iterationData;
+
                     return new AgentResponse(
                         answer: $response->content,
                         sql: $this->lastSql,
@@ -89,11 +92,19 @@ class SqlAgent implements Agent
 
                 foreach ($response->toolCalls as $toolCall) {
                     $result = $this->executeTool($toolCall);
+                    $iterationData['tool_results'][] = [
+                        'tool' => $toolCall->name,
+                        'success' => $result->success,
+                        'data' => $result->data,
+                        'error' => $result->error,
+                    ];
                     $messages = $this->messageBuilder->append(
                         $messages,
                         $this->messageBuilder->toolResult($toolCall, $result)
                     );
                 }
+
+                $this->iterations[] = $iterationData;
             }
 
             // Max iterations reached
@@ -157,6 +168,7 @@ class SqlAgent implements Agent
         for ($i = 0; $i < $maxIterations; $i++) {
             $content = '';
             $toolCalls = [];
+            $finishReason = null;
 
             foreach ($this->llm->stream($messages, $tools) as $chunk) {
                 /** @var StreamChunk $chunk */
@@ -167,21 +179,25 @@ class SqlAgent implements Agent
 
                 if ($chunk->isComplete()) {
                     $toolCalls = $chunk->toolCalls;
-
-                    $this->iterations[] = [
-                        'iteration' => $i + 1,
-                        'response' => $content,
-                        'tool_calls' => array_map(
-                            fn (ToolCall $tc) => ['name' => $tc->name, 'arguments' => $tc->arguments],
-                            $toolCalls
-                        ),
-                        'finish_reason' => $chunk->finishReason,
-                    ];
+                    $finishReason = $chunk->finishReason;
                 }
             }
 
+            $iterationData = [
+                'iteration' => $i + 1,
+                'response' => $content,
+                'tool_calls' => array_map(
+                    fn (ToolCall $tc) => ['name' => $tc->name, 'arguments' => $tc->arguments],
+                    $toolCalls
+                ),
+                'finish_reason' => $finishReason,
+                'tool_results' => [],
+            ];
+
             // If no tool calls, we're done
             if (empty($toolCalls)) {
+                $this->iterations[] = $iterationData;
+
                 // If content is empty but we have results, generate a fallback response
                 if (empty(trim($content)) && $this->lastSql !== null && $this->lastResults !== null) {
                     $fallbackContent = $this->generateFallbackResponse();
@@ -230,11 +246,19 @@ class SqlAgent implements Agent
                 );
 
                 $result = $this->executeTool($toolCall);
+                $iterationData['tool_results'][] = [
+                    'tool' => $toolCall->name,
+                    'success' => $result->success,
+                    'data' => $result->data,
+                    'error' => $result->error,
+                ];
                 $messages = $this->messageBuilder->append(
                     $messages,
                     $this->messageBuilder->toolResult($toolCall, $result)
                 );
             }
+
+            $this->iterations[] = $iterationData;
         }
 
         // Max iterations reached

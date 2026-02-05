@@ -288,6 +288,18 @@ function chatStream() {
         init() {
             // Scroll to bottom on initial load
             this.$nextTick(() => this.scrollToBottomInstant());
+
+            // Listen for new-conversation event to reset Alpine state
+            Livewire.on('new-conversation', () => {
+                this.conversationId = null;
+                this.streamedContent = '';
+                this.pendingUserMessage = '';
+            });
+
+            // Listen for load-conversation event to sync Alpine state
+            Livewire.on('load-conversation', ([{conversationId}]) => {
+                this.conversationId = conversationId;
+            });
         },
 
         scrollToBottom() {
