@@ -32,7 +32,7 @@ class IntrospectSchemaTool extends BaseTool
                 'Optional: The name of a specific table to inspect. If not provided, lists all tables.'
             ),
             'include_sample_data' => $this->booleanProperty(
-                'Whether to include sample data from the table (up to 3 rows).',
+                'Whether to include sample data from the table (up to 3 rows). This data is for understanding the schema only - never use it directly in responses to the user.',
                 false
             ),
         ]);

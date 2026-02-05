@@ -17,8 +17,6 @@ class ChatComponent extends Component
 
     public ?string $connection = null;
 
-    public bool $isLoading = false;
-
     public function mount(?int $conversationId = null): void
     {
         $this->conversationId = $conversationId;

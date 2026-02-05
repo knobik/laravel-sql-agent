@@ -25,9 +25,9 @@
             <div class="flex items-center gap-2">
                 {{-- Connection Selector --}}
                 <x-sql-agent::connection-selector
+                    x-bind:disabled="isStreaming"
                     :connections="$this->connections"
                     :selected="$connection"
-                    :disabled="$isLoading"
                 />
 
                 {{-- Dark Mode Toggle --}}
@@ -96,7 +96,7 @@
 
     {{-- Messages Area --}}
     <div id="messages-container" class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6 bg-gray-50 dark:bg-gray-900">
-        @if(empty($this->messages) && !$isLoading)
+        @if(empty($this->messages))
             {{-- Empty State (hidden when streaming) --}}
             <div x-show="!showStreamingUI" x-cloak class="flex flex-col items-center justify-center h-full text-center px-4">
                 <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center mb-6 shadow-lg shadow-primary-500/25">
@@ -195,18 +195,12 @@
                         <div x-ref="streamContent" class="markdown-content text-gray-700 dark:text-gray-200" :class="{ 'stream-cursor': isStreaming && hasRealText }"></div>
                         {{-- Thinking indicator (no content yet) --}}
                         <div x-show="isStreaming && !streamedContent" class="flex items-center gap-2 text-gray-400 dark:text-gray-500">
-                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                            <x-sql-agent::spinner />
                             <span class="italic">Thinking...</span>
                         </div>
                         {{-- Generating indicator (tools shown but no text yet) --}}
                         <div x-show="isStreaming && streamedContent && !hasRealText" class="flex items-center gap-2 text-gray-400 dark:text-gray-500 mt-3">
-                            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
+                            <x-sql-agent::spinner />
                             <span class="italic">Generating response...</span>
                         </div>
                     </div>
@@ -242,10 +236,7 @@
                     class="h-12 px-5 bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-2 disabled:cursor-not-allowed shadow-sm hover:shadow-md disabled:shadow-none"
                 >
                     {{-- Spinner shown during streaming --}}
-                    <svg x-show="isStreaming" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <x-sql-agent::spinner x-show="isStreaming" class="w-5 h-5" />
                     {{-- Send icon shown when not streaming --}}
                     <svg x-show="!isStreaming" x-cloak class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
@@ -361,10 +352,7 @@ function chatStream() {
                     buffer = lines.pop() || '';
 
                     for (const line of lines) {
-                        if (line.startsWith('event: ')) {
-                            const eventType = line.slice(7);
-                            continue;
-                        }
+                        if (line.startsWith('event: ')) continue;
                         if (line.startsWith('data: ')) {
                             const data = JSON.parse(line.slice(6));
                             this.handleEvent(data);
