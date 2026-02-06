@@ -16,11 +16,11 @@ describe('TableMetadata', function () {
             'table_name' => 'users',
             'description' => 'User accounts table',
             'columns' => [
-                ['name' => 'id', 'type' => 'bigint', 'description' => 'Primary key'],
-                ['name' => 'name', 'type' => 'varchar', 'description' => 'User name'],
+                'id' => 'Primary key, bigint',
+                'name' => "User's full name, varchar",
             ],
             'relationships' => [
-                ['type' => 'hasMany', 'related_table' => 'posts', 'foreign_key' => 'user_id'],
+                'Has many posts (posts.user_id -> users.id)',
             ],
             'data_quality_notes' => ['Email is always lowercase'],
         ]);
@@ -37,9 +37,9 @@ describe('TableMetadata', function () {
         $table = TableMetadata::create([
             'table_name' => 'users',
             'columns' => [
-                ['name' => 'id', 'type' => 'bigint'],
-                ['name' => 'name', 'type' => 'varchar'],
-                ['name' => 'email', 'type' => 'varchar'],
+                'id' => 'Primary key, bigint',
+                'name' => "User's full name, varchar",
+                'email' => "User's email, varchar",
             ],
         ]);
 
@@ -50,15 +50,15 @@ describe('TableMetadata', function () {
         $table = TableMetadata::create([
             'table_name' => 'users',
             'columns' => [
-                ['name' => 'id', 'type' => 'bigint', 'description' => 'Primary key'],
-                ['name' => 'name', 'type' => 'varchar', 'description' => 'User name'],
+                'id' => 'Primary key, bigint',
+                'name' => "User's full name, varchar",
             ],
         ]);
 
         $column = $table->getColumn('name');
-        expect($column)->toBeArray();
-        expect($column['type'])->toBe('varchar');
-        expect($column['description'])->toBe('User name');
+        expect($column)->toBe("User's full name, varchar");
+
+        expect($table->getColumn('nonexistent'))->toBeNull();
     });
 
     it('scopes by connection', function () {

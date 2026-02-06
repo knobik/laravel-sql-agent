@@ -6,8 +6,6 @@ namespace Knobik\SqlAgent\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
-use Knobik\SqlAgent\Data\ColumnInfo;
-use Knobik\SqlAgent\Data\RelationshipInfo;
 use Knobik\SqlAgent\Data\TableSchema;
 use Throwable;
 
@@ -88,7 +86,7 @@ class SchemaIntrospector
     {
         $schemaBuilder = Schema::connection($connection);
 
-        $columns = $schemaBuilder->getColumns($tableName);
+        $dbColumns = $schemaBuilder->getColumns($tableName);
         $indexes = $schemaBuilder->getIndexes($tableName);
         $foreignKeys = $this->getForeignKeys($tableName, $connection);
 
@@ -98,31 +96,45 @@ class SchemaIntrospector
         // Build foreign key lookup
         $foreignKeyMap = $this->buildForeignKeyMap($foreignKeys);
 
-        // Build column info collection
-        $columnInfos = collect($columns)->map(function (array $column) use ($primaryKeyColumns, $foreignKeyMap) {
+        // Build simplified column descriptions
+        $columns = [];
+        foreach ($dbColumns as $column) {
             $columnName = $column['name'];
+            $parts = [$column['type_name']];
+
+            if (in_array($columnName, $primaryKeyColumns)) {
+                $parts[] = 'Primary key';
+            }
+
             $fkInfo = $foreignKeyMap[$columnName] ?? null;
+            if ($fkInfo !== null) {
+                $parts[] = "FK \u{2192} {$fkInfo['table']}.{$fkInfo['column']}";
+            }
 
-            return new ColumnInfo(
-                name: $columnName,
-                type: $column['type_name'],
-                description: $column['comment'] ?? null,
-                nullable: $column['nullable'],
-                isPrimaryKey: in_array($columnName, $primaryKeyColumns),
-                isForeignKey: $fkInfo !== null,
-                foreignTable: $fkInfo['table'] ?? null,
-                foreignColumn: $fkInfo['column'] ?? null,
-                defaultValue: $this->formatDefaultValue($column['default'] ?? null),
-            );
-        });
+            if (! $column['nullable']) {
+                $parts[] = 'NOT NULL';
+            }
 
-        // Build relationships from foreign keys
-        $relationships = collect($foreignKeys)->map(fn (array $fk) => new RelationshipInfo(
-            type: 'belongsTo',
-            relatedTable: $fk['foreign_table'],
-            foreignKey: $fk['columns'][0] ?? '',
-            localKey: $fk['foreign_columns'][0] ?? 'id',
-        ));
+            $default = $this->formatDefaultValue($column['default'] ?? null);
+            if ($default !== null) {
+                $parts[] = "default: {$default}";
+            }
+
+            if (! empty($column['comment'])) {
+                $parts[] = $column['comment'];
+            }
+
+            $columns[$columnName] = implode(', ', $parts);
+        }
+
+        // Build simplified relationship descriptions
+        $relationships = [];
+        foreach ($foreignKeys as $fk) {
+            $localColumn = $fk['columns'][0] ?? '';
+            $foreignTable = $fk['foreign_table'];
+            $foreignColumn = $fk['foreign_columns'][0] ?? 'id';
+            $relationships[] = "belongsTo {$foreignTable} via {$localColumn} \u{2192} {$foreignTable}.{$foreignColumn}";
+        }
 
         // Try to get table comment
         $tableComment = $this->getTableComment($tableName, $connection);
@@ -130,7 +142,7 @@ class SchemaIntrospector
         return new TableSchema(
             tableName: $tableName,
             description: $tableComment,
-            columns: $columnInfos,
+            columns: $columns,
             relationships: $relationships,
         );
     }

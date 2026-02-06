@@ -6,8 +6,6 @@ namespace Knobik\SqlAgent\Services;
 
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
-use Knobik\SqlAgent\Data\ColumnInfo;
-use Knobik\SqlAgent\Data\RelationshipInfo;
 use Knobik\SqlAgent\Data\TableSchema;
 use Knobik\SqlAgent\Models\TableMetadata;
 
@@ -20,7 +18,7 @@ class SemanticModelLoader
      */
     public function load(?string $connection = null): Collection
     {
-        $source = config('sql-agent.knowledge.source', 'files');
+        $source = config('sql-agent.knowledge.source', 'database');
 
         return match ($source) {
             'files' => $this->loadFromFiles($connection),
@@ -104,32 +102,12 @@ class SemanticModelLoader
      */
     protected function arrayToTableSchema(array $data): TableSchema
     {
-        $columns = collect($data['table_columns'] ?? $data['columns'] ?? [])
-            ->map(fn (array $col) => new ColumnInfo(
-                name: $col['name'],
-                type: $col['type'],
-                description: $col['description'] ?? null,
-                nullable: $col['nullable'] ?? true,
-                isPrimaryKey: $col['is_primary_key'] ?? $col['primary_key'] ?? false,
-                isForeignKey: $col['is_foreign_key'] ?? $col['foreign_key'] ?? false,
-                foreignTable: $col['foreign_table'] ?? null,
-                foreignColumn: $col['foreign_column'] ?? null,
-                defaultValue: $col['default_value'] ?? $col['default'] ?? null,
-            ));
-
-        $relationships = collect($data['relationships'] ?? [])
-            ->map(fn (array $rel) => new RelationshipInfo(
-                type: $rel['type'],
-                relatedTable: $rel['related_table'],
-                foreignKey: $rel['foreign_key'],
-                localKey: $rel['local_key'] ?? null,
-                pivotTable: $rel['pivot_table'] ?? null,
-                description: $rel['description'] ?? null,
-            ));
+        $columns = $data['columns'] ?? $data['table_columns'] ?? [];
+        $relationships = $data['relationships'] ?? [];
 
         return new TableSchema(
-            tableName: $data['table_name'],
-            description: $data['table_description'] ?? $data['description'] ?? null,
+            tableName: $data['table'] ?? $data['table_name'] ?? '',
+            description: $data['description'] ?? $data['table_description'] ?? null,
             columns: $columns,
             relationships: $relationships,
             dataQualityNotes: $data['data_quality_notes'] ?? [],
@@ -142,34 +120,11 @@ class SemanticModelLoader
      */
     protected function modelToTableSchema(TableMetadata $model): TableSchema
     {
-        $columns = collect($model->columns ?? [])
-            ->map(fn (array $col) => new ColumnInfo(
-                name: $col['name'],
-                type: $col['type'],
-                description: $col['description'] ?? null,
-                nullable: $col['nullable'] ?? true,
-                isPrimaryKey: $col['is_primary_key'] ?? $col['primary_key'] ?? false,
-                isForeignKey: $col['is_foreign_key'] ?? $col['foreign_key'] ?? false,
-                foreignTable: $col['foreign_table'] ?? null,
-                foreignColumn: $col['foreign_column'] ?? null,
-                defaultValue: $col['default_value'] ?? $col['default'] ?? null,
-            ));
-
-        $relationships = collect($model->relationships ?? [])
-            ->map(fn (array $rel) => new RelationshipInfo(
-                type: $rel['type'],
-                relatedTable: $rel['related_table'],
-                foreignKey: $rel['foreign_key'],
-                localKey: $rel['local_key'] ?? null,
-                pivotTable: $rel['pivot_table'] ?? null,
-                description: $rel['description'] ?? null,
-            ));
-
         return new TableSchema(
             tableName: $model->table_name,
             description: $model->description,
-            columns: $columns,
-            relationships: $relationships,
+            columns: $model->columns ?? [],
+            relationships: $model->relationships ?? [],
             dataQualityNotes: $model->data_quality_notes ?? [],
         );
     }

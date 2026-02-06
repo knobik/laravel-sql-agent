@@ -1,107 +1,23 @@
 <?php
 
 use Knobik\SqlAgent\Data\BusinessRuleData;
-use Knobik\SqlAgent\Data\ColumnInfo;
 use Knobik\SqlAgent\Data\Context;
 use Knobik\SqlAgent\Data\QueryPatternData;
-use Knobik\SqlAgent\Data\RelationshipInfo;
 use Knobik\SqlAgent\Data\TableSchema;
 use Knobik\SqlAgent\Enums\BusinessRuleType;
-
-describe('ColumnInfo', function () {
-    it('can be created', function () {
-        $column = new ColumnInfo(
-            name: 'id',
-            type: 'bigint',
-            description: 'Primary key',
-            nullable: false,
-            isPrimaryKey: true,
-        );
-
-        expect($column->name)->toBe('id');
-        expect($column->type)->toBe('bigint');
-        expect($column->isPrimaryKey)->toBeTrue();
-        expect($column->nullable)->toBeFalse();
-    });
-
-    it('generates prompt string', function () {
-        $column = new ColumnInfo(
-            name: 'id',
-            type: 'bigint',
-            description: 'Primary key',
-            isPrimaryKey: true,
-            nullable: false,
-        );
-
-        $prompt = $column->toPromptString();
-
-        expect($prompt)->toContain('id');
-        expect($prompt)->toContain('bigint');
-        expect($prompt)->toContain('[PK]');
-        expect($prompt)->toContain('NOT NULL');
-    });
-
-    it('includes foreign key info in prompt', function () {
-        $column = new ColumnInfo(
-            name: 'user_id',
-            type: 'bigint',
-            isForeignKey: true,
-            foreignTable: 'users',
-            foreignColumn: 'id',
-        );
-
-        $prompt = $column->toPromptString();
-
-        expect($prompt)->toContain('[FK -> users.id]');
-    });
-});
-
-describe('RelationshipInfo', function () {
-    it('can be created', function () {
-        $rel = new RelationshipInfo(
-            type: 'hasMany',
-            relatedTable: 'posts',
-            foreignKey: 'user_id',
-        );
-
-        expect($rel->type)->toBe('hasMany');
-        expect($rel->relatedTable)->toBe('posts');
-        expect($rel->isHasMany())->toBeTrue();
-    });
-
-    it('generates prompt string for hasMany', function () {
-        $rel = new RelationshipInfo(
-            type: 'hasMany',
-            relatedTable: 'posts',
-            foreignKey: 'user_id',
-        );
-
-        expect($rel->toPromptString())->toContain('hasMany posts');
-    });
-
-    it('generates prompt string for belongsTo', function () {
-        $rel = new RelationshipInfo(
-            type: 'belongsTo',
-            relatedTable: 'users',
-            foreignKey: 'user_id',
-        );
-
-        expect($rel->toPromptString())->toContain('belongsTo users');
-    });
-});
 
 describe('TableSchema', function () {
     it('can be created', function () {
         $schema = new TableSchema(
             tableName: 'users',
             description: 'User accounts',
-            columns: collect([
-                new ColumnInfo(name: 'id', type: 'bigint'),
-                new ColumnInfo(name: 'name', type: 'varchar'),
-            ]),
-            relationships: collect([
-                new RelationshipInfo(type: 'hasMany', relatedTable: 'posts', foreignKey: 'user_id'),
-            ]),
+            columns: [
+                'id' => 'Primary key, bigint',
+                'name' => "User's full name, varchar",
+            ],
+            relationships: [
+                'Has many posts (posts.user_id -> users.id)',
+            ],
         );
 
         expect($schema->tableName)->toBe('users');
@@ -113,9 +29,9 @@ describe('TableSchema', function () {
         $schema = new TableSchema(
             tableName: 'users',
             description: 'User accounts',
-            columns: collect([
-                new ColumnInfo(name: 'id', type: 'bigint', isPrimaryKey: true),
-            ]),
+            columns: [
+                'id' => 'Primary key, bigint',
+            ],
             dataQualityNotes: ['Email is lowercase'],
         );
 
@@ -124,6 +40,7 @@ describe('TableSchema', function () {
         expect($prompt)->toContain('## Table: users');
         expect($prompt)->toContain('User accounts');
         expect($prompt)->toContain('### Columns:');
+        expect($prompt)->toContain('- id: Primary key, bigint');
         expect($prompt)->toContain('### Data Quality Notes:');
         expect($prompt)->toContain('Email is lowercase');
     });
@@ -131,10 +48,10 @@ describe('TableSchema', function () {
     it('can get column names', function () {
         $schema = new TableSchema(
             tableName: 'users',
-            columns: collect([
-                new ColumnInfo(name: 'id', type: 'bigint'),
-                new ColumnInfo(name: 'name', type: 'varchar'),
-            ]),
+            columns: [
+                'id' => 'Primary key, bigint',
+                'name' => "User's full name, varchar",
+            ],
         );
 
         expect($schema->getColumnNames())->toBe(['id', 'name']);
@@ -143,13 +60,62 @@ describe('TableSchema', function () {
     it('can check if column exists', function () {
         $schema = new TableSchema(
             tableName: 'users',
-            columns: collect([
-                new ColumnInfo(name: 'id', type: 'bigint'),
-            ]),
+            columns: [
+                'id' => 'Primary key, bigint',
+            ],
         );
 
         expect($schema->hasColumn('id'))->toBeTrue();
         expect($schema->hasColumn('email'))->toBeFalse();
+    });
+
+    it('can get column description', function () {
+        $schema = new TableSchema(
+            tableName: 'users',
+            columns: [
+                'id' => 'Primary key, bigint',
+                'name' => "User's full name",
+            ],
+        );
+
+        expect($schema->getColumn('id'))->toBe('Primary key, bigint');
+        expect($schema->getColumn('name'))->toBe("User's full name");
+        expect($schema->getColumn('email'))->toBeNull();
+    });
+
+    it('renders relationships in prompt', function () {
+        $schema = new TableSchema(
+            tableName: 'users',
+            columns: [
+                'id' => 'Primary key',
+            ],
+            relationships: [
+                'Has many posts (posts.user_id -> users.id)',
+                'Has many comments (comments.user_id -> users.id)',
+            ],
+        );
+
+        $prompt = $schema->toPromptString();
+
+        expect($prompt)->toContain('### Relationships:');
+        expect($prompt)->toContain('- Has many posts (posts.user_id -> users.id)');
+        expect($prompt)->toContain('- Has many comments (comments.user_id -> users.id)');
+    });
+
+    it('renders use cases in prompt', function () {
+        $schema = new TableSchema(
+            tableName: 'users',
+            columns: [
+                'id' => 'Primary key',
+            ],
+            useCases: ['User authentication', 'Profile management'],
+        );
+
+        $prompt = $schema->toPromptString();
+
+        expect($prompt)->toContain('### Use Cases:');
+        expect($prompt)->toContain('- User authentication');
+        expect($prompt)->toContain('- Profile management');
     });
 });
 

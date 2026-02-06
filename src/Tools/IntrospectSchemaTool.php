@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Knobik\SqlAgent\Tools;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Knobik\SqlAgent\Services\SchemaIntrospector;
 use RuntimeException;
+use Throwable;
 
 class IntrospectSchemaTool extends BaseTool
 {
@@ -83,31 +85,55 @@ class IntrospectSchemaTool extends BaseTool
             );
         }
 
-        $schema = $this->introspector->introspectTable($tableName, $connection);
+        $schemaBuilder = Schema::connection($connection);
 
-        if ($schema === null) {
-            throw new RuntimeException("Could not introspect table '{$tableName}'.");
+        $dbColumns = $schemaBuilder->getColumns($tableName);
+        $indexes = $schemaBuilder->getIndexes($tableName);
+        $foreignKeys = $this->getForeignKeys($tableName, $connection);
+
+        // Find primary key columns
+        $primaryKeyColumns = $this->getPrimaryKeyColumns($indexes);
+
+        // Build foreign key lookup
+        $foreignKeyMap = $this->buildForeignKeyMap($foreignKeys);
+
+        // Build detailed column data
+        $columns = [];
+        foreach ($dbColumns as $column) {
+            $columnName = $column['name'];
+            $fkInfo = $foreignKeyMap[$columnName] ?? null;
+
+            $columns[] = [
+                'name' => $columnName,
+                'type' => $column['type_name'],
+                'nullable' => $column['nullable'],
+                'primary_key' => in_array($columnName, $primaryKeyColumns),
+                'foreign_key' => $fkInfo !== null,
+                'references' => $fkInfo !== null ? "{$fkInfo['table']}.{$fkInfo['column']}" : null,
+                'default' => $this->formatDefaultValue($column['default'] ?? null),
+                'description' => $column['comment'] ?? null,
+            ];
         }
 
+        // Build detailed relationship data
+        $relationships = [];
+        foreach ($foreignKeys as $fk) {
+            $relationships[] = [
+                'type' => 'belongsTo',
+                'related_table' => $fk['foreign_table'],
+                'foreign_key' => $fk['columns'][0] ?? '',
+                'local_key' => $fk['foreign_columns'][0] ?? 'id',
+            ];
+        }
+
+        // Get table comment
+        $tableComment = $this->getTableComment($tableName, $connection);
+
         $result = [
-            'table' => $schema->tableName,
-            'description' => $schema->description,
-            'columns' => $schema->columns->map(fn ($col) => [
-                'name' => $col->name,
-                'type' => $col->type,
-                'nullable' => $col->nullable,
-                'primary_key' => $col->isPrimaryKey,
-                'foreign_key' => $col->isForeignKey,
-                'references' => $col->isForeignKey ? "{$col->foreignTable}.{$col->foreignColumn}" : null,
-                'default' => $col->defaultValue,
-                'description' => $col->description,
-            ])->toArray(),
-            'relationships' => $schema->relationships->map(fn ($rel) => [
-                'type' => $rel->type,
-                'related_table' => $rel->relatedTable,
-                'foreign_key' => $rel->foreignKey,
-                'local_key' => $rel->localKey,
-            ])->toArray(),
+            'table' => $tableName,
+            'description' => $tableComment,
+            'columns' => $columns,
+            'relationships' => $relationships,
         ];
 
         if ($includeSampleData) {
@@ -115,6 +141,82 @@ class IntrospectSchemaTool extends BaseTool
         }
 
         return $result;
+    }
+
+    /**
+     * @return array<string>
+     */
+    protected function getPrimaryKeyColumns(array $indexes): array
+    {
+        foreach ($indexes as $index) {
+            if ($index['primary'] ?? false) {
+                return $index['columns'] ?? [];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<string, array{table: string, column: string}>
+     */
+    protected function buildForeignKeyMap(array $foreignKeys): array
+    {
+        $map = [];
+
+        foreach ($foreignKeys as $fk) {
+            $localColumns = $fk['columns'] ?? [];
+            $foreignColumns = $fk['foreign_columns'] ?? [];
+            $foreignTable = $fk['foreign_table'] ?? null;
+
+            foreach ($localColumns as $index => $columnName) {
+                $map[$columnName] = [
+                    'table' => $foreignTable,
+                    'column' => $foreignColumns[$index] ?? 'id',
+                ];
+            }
+        }
+
+        return $map;
+    }
+
+    protected function getForeignKeys(string $tableName, ?string $connection): array
+    {
+        try {
+            return Schema::connection($connection)->getForeignKeys($tableName);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    protected function getTableComment(string $tableName, ?string $connection): ?string
+    {
+        try {
+            $tables = Schema::connection($connection)->getTables();
+        } catch (Throwable) {
+            return null;
+        }
+
+        foreach ($tables as $table) {
+            if ($table['name'] === $tableName) {
+                return $table['comment'] ?? null;
+            }
+        }
+
+        return null;
+    }
+
+    protected function formatDefaultValue(mixed $default): ?string
+    {
+        if ($default === null) {
+            return null;
+        }
+
+        if (is_bool($default)) {
+            return $default ? 'true' : 'false';
+        }
+
+        return (string) $default;
     }
 
     protected function getSampleData(string $tableName, ?string $connection): array

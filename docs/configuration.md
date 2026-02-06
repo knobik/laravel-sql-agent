@@ -142,6 +142,13 @@ This is useful when running multiple models through Ollama where some don't supp
 ],
 ```
 
+The `prune_after_days` setting is used by the `sql-agent:prune-learnings` artisan command, which removes old learnings from the database. This command is **not run automatically** — you need to either run it manually or add it to your application's scheduler:
+
+```php
+// routes/console.php
+Schedule::command('sql-agent:prune-learnings')->daily();
+```
+
 ## Knowledge Configuration
 
 ```php
@@ -149,10 +156,15 @@ This is useful when running multiple models through Ollama where some don't supp
     // Path to knowledge files
     'path' => env('SQL_AGENT_KNOWLEDGE_PATH', resource_path('sql-agent/knowledge')),
 
-    // Source for knowledge: 'files' or 'database'
-    'source' => env('SQL_AGENT_KNOWLEDGE_SOURCE', 'files'),
+    // Source for loading knowledge at runtime
+    'source' => env('SQL_AGENT_KNOWLEDGE_SOURCE', 'database'),
 ],
 ```
+
+The `source` option controls where the agent reads knowledge from at runtime:
+
+- **`database`** (default) — Reads knowledge from the `sql_agent_table_metadata`, `sql_agent_business_rules`, and `sql_agent_query_patterns` database tables. You must run `php artisan sql-agent:load-knowledge` first to import your JSON files into the database. This is the recommended option for production as it supports full-text search over knowledge.
+- **`files`** — Reads knowledge directly from JSON files on disk at the configured `path`. No database import step is needed, but full-text search over knowledge is not available.
 
 ## UI Configuration
 

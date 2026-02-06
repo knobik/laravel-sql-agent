@@ -1,6 +1,6 @@
 {
-    "table_name": "users",
-    "table_description": "Contains user account information including authentication data and profile details",
+    "table": "users",
+    "description": "Contains user account information including authentication data and profile details",
     "use_cases": [
         "User authentication and login",
         "Profile management",
@@ -11,94 +11,22 @@
         "created_at and updated_at use UTC timezone",
         "deleted_at is null for active users (soft deletes enabled)"
     ],
-    "table_columns": [
-        {
-            "name": "id",
-            "type": "bigint unsigned",
-            "description": "Primary key, auto-incrementing",
-            "primary_key": true,
-            "nullable": false
-        },
-        {
-            "name": "name",
-            "type": "varchar(255)",
-            "description": "User's full display name",
-            "nullable": false
-        },
-        {
-            "name": "email",
-            "type": "varchar(255)",
-            "description": "User's email address, used for login and notifications",
-            "nullable": false
-        },
-        {
-            "name": "email_verified_at",
-            "type": "timestamp",
-            "description": "When the user verified their email, null if not verified",
-            "nullable": true
-        },
-        {
-            "name": "password",
-            "type": "varchar(255)",
-            "description": "Hashed password (bcrypt)",
-            "nullable": false
-        },
-        {
-            "name": "role",
-            "type": "enum('user','admin','moderator')",
-            "description": "User's role for access control",
-            "nullable": false,
-            "default": "user"
-        },
-        {
-            "name": "last_login_at",
-            "type": "timestamp",
-            "description": "Timestamp of user's most recent login",
-            "nullable": true
-        },
-        {
-            "name": "remember_token",
-            "type": "varchar(100)",
-            "description": "Token for 'remember me' functionality",
-            "nullable": true
-        },
-        {
-            "name": "created_at",
-            "type": "timestamp",
-            "description": "Account creation timestamp",
-            "nullable": true
-        },
-        {
-            "name": "updated_at",
-            "type": "timestamp",
-            "description": "Last modification timestamp",
-            "nullable": true
-        },
-        {
-            "name": "deleted_at",
-            "type": "timestamp",
-            "description": "Soft delete timestamp, null means user is active",
-            "nullable": true
-        }
-    ],
+    "columns": {
+        "id": "Primary key, auto-incrementing bigint unsigned",
+        "name": "User's full display name",
+        "email": "User's email address, used for login and notifications",
+        "email_verified_at": "When the user verified their email, null if not verified",
+        "password": "Hashed password (bcrypt)",
+        "role": "User's role for access control: 'user', 'admin', or 'moderator' (default: 'user')",
+        "last_login_at": "Timestamp of user's most recent login",
+        "remember_token": "Token for 'remember me' functionality",
+        "created_at": "Account creation timestamp",
+        "updated_at": "Last modification timestamp",
+        "deleted_at": "Soft delete timestamp, null means user is active"
+    },
     "relationships": [
-        {
-            "type": "hasMany",
-            "related_table": "posts",
-            "foreign_key": "user_id",
-            "description": "A user can have many posts"
-        },
-        {
-            "type": "hasMany",
-            "related_table": "comments",
-            "foreign_key": "user_id",
-            "description": "A user can have many comments"
-        },
-        {
-            "type": "hasOne",
-            "related_table": "profiles",
-            "foreign_key": "user_id",
-            "description": "A user has one profile with extended information"
-        }
+        "Has many posts (posts.user_id -> users.id)",
+        "Has many comments (comments.user_id -> users.id)",
+        "Has one profile with extended information (profiles.user_id -> users.id)"
     ]
 }

@@ -12,8 +12,8 @@ use Illuminate\Support\Carbon;
  * @property string $connection
  * @property string $table_name
  * @property string|null $description
- * @property array<int, array<string, mixed>>|null $columns
- * @property array<int, array<string, mixed>>|null $relationships
+ * @property array<string, string>|null $columns
+ * @property array<string>|null $relationships
  * @property array<int, string>|null $data_quality_notes
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -54,23 +54,16 @@ class TableMetadata extends Model
         return $query->where('table_name', $tableName);
     }
 
+    /**
+     * @return array<string>
+     */
     public function getColumnNames(): array
     {
-        return collect($this->columns ?? [])
-            ->pluck('name')
-            ->all();
+        return array_keys($this->columns ?? []);
     }
 
-    public function getColumn(string $name): ?array
+    public function getColumn(string $name): ?string
     {
-        return collect($this->columns ?? [])
-            ->firstWhere('name', $name);
-    }
-
-    public function getRelationshipsForTable(string $tableName): array
-    {
-        return collect($this->relationships ?? [])
-            ->filter(fn ($rel) => ($rel['related_table'] ?? null) === $tableName)
-            ->all();
+        return ($this->columns ?? [])[$name] ?? null;
     }
 }

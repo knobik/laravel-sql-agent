@@ -1,6 +1,6 @@
 {
-    "table_name": "posts",
-    "table_description": "Blog posts created by users",
+    "table": "posts",
+    "description": "Blog posts created by users",
     "use_cases": [
         "Content management",
         "Blog functionality",
@@ -11,99 +11,22 @@
         "view_count is incremented on each page view",
         "slug must be unique and URL-safe"
     ],
-    "table_columns": [
-        {
-            "name": "id",
-            "type": "bigint unsigned",
-            "description": "Primary key",
-            "primary_key": true,
-            "nullable": false
-        },
-        {
-            "name": "user_id",
-            "type": "bigint unsigned",
-            "description": "Author of the post",
-            "foreign_key": true,
-            "foreign_table": "users",
-            "foreign_column": "id",
-            "nullable": false
-        },
-        {
-            "name": "title",
-            "type": "varchar(255)",
-            "description": "Post title",
-            "nullable": false
-        },
-        {
-            "name": "slug",
-            "type": "varchar(255)",
-            "description": "URL-friendly version of the title, unique",
-            "nullable": false
-        },
-        {
-            "name": "content",
-            "type": "text",
-            "description": "Main post content in HTML",
-            "nullable": false
-        },
-        {
-            "name": "excerpt",
-            "type": "text",
-            "description": "Short summary of the post",
-            "nullable": true
-        },
-        {
-            "name": "status",
-            "type": "enum('draft','published','archived')",
-            "description": "Publication status of the post",
-            "nullable": false,
-            "default": "draft"
-        },
-        {
-            "name": "view_count",
-            "type": "int unsigned",
-            "description": "Number of times the post has been viewed",
-            "nullable": false,
-            "default": "0"
-        },
-        {
-            "name": "published_at",
-            "type": "timestamp",
-            "description": "When the post was published, null for drafts",
-            "nullable": true
-        },
-        {
-            "name": "created_at",
-            "type": "timestamp",
-            "description": "When the post was created",
-            "nullable": true
-        },
-        {
-            "name": "updated_at",
-            "type": "timestamp",
-            "description": "When the post was last updated",
-            "nullable": true
-        }
-    ],
+    "columns": {
+        "id": "Primary key, auto-incrementing bigint unsigned",
+        "user_id": "Author of the post, FK -> users.id",
+        "title": "Post title",
+        "slug": "URL-friendly version of the title, unique",
+        "content": "Main post content in HTML",
+        "excerpt": "Short summary of the post",
+        "status": "Publication status: 'draft', 'published', or 'archived' (default: 'draft')",
+        "view_count": "Number of times the post has been viewed (default: 0)",
+        "published_at": "When the post was published, null for drafts",
+        "created_at": "When the post was created",
+        "updated_at": "When the post was last updated"
+    },
     "relationships": [
-        {
-            "type": "belongsTo",
-            "related_table": "users",
-            "foreign_key": "user_id",
-            "description": "The author of the post"
-        },
-        {
-            "type": "hasMany",
-            "related_table": "comments",
-            "foreign_key": "post_id",
-            "description": "Comments on this post"
-        },
-        {
-            "type": "belongsToMany",
-            "related_table": "tags",
-            "foreign_key": "post_id",
-            "pivot_table": "post_tag",
-            "description": "Tags associated with this post"
-        }
+        "Belongs to users via user_id -> users.id (the author)",
+        "Has many comments (comments.post_id -> posts.id)",
+        "Belongs to many tags via post_tag pivot table"
     ]
 }

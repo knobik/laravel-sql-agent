@@ -22,7 +22,7 @@ class QueryPatternSearch
     public function search(string $question, ?int $limit = null): Collection
     {
         $limit = $limit ?? $this->defaultLimit;
-        $source = config('sql-agent.knowledge.source', 'files');
+        $source = config('sql-agent.knowledge.source', 'database');
 
         return match ($source) {
             'files' => $this->searchFiles($question, $limit),
@@ -295,7 +295,7 @@ class QueryPatternSearch
      */
     public function all(): Collection
     {
-        $source = config('sql-agent.knowledge.source', 'files');
+        $source = config('sql-agent.knowledge.source', 'database');
 
         return match ($source) {
             'files' => $this->loadAllFromFiles(),

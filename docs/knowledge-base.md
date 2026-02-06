@@ -13,12 +13,12 @@ resources/sql-agent/knowledge/
 
 ## Table Metadata
 
-Create JSON files in `tables/` to describe your database schema:
+Create JSON files in `tables/` to describe your database schema. Columns are a simple map of column name to description string, and relationships are a list of description strings:
 
 ```json
 {
-    "table_name": "orders",
-    "table_description": "Contains customer orders and their status",
+    "table": "orders",
+    "description": "Contains customer orders and their status",
     "use_cases": [
         "Order management",
         "Revenue reporting",
@@ -28,61 +28,21 @@ Create JSON files in `tables/` to describe your database schema:
         "total_amount is stored in cents, divide by 100 for dollars",
         "shipped_at is null if the order has not been shipped yet"
     ],
-    "table_columns": [
-        {
-            "name": "id",
-            "type": "bigint unsigned",
-            "description": "Primary key",
-            "primary_key": true,
-            "nullable": false
-        },
-        {
-            "name": "customer_id",
-            "type": "bigint unsigned",
-            "description": "Foreign key to customers.id",
-            "foreign_key": true,
-            "foreign_table": "customers",
-            "foreign_column": "id",
-            "nullable": false
-        },
-        {
-            "name": "status",
-            "type": "enum('pending','processing','shipped','delivered','cancelled')",
-            "description": "Order status",
-            "nullable": false,
-            "default": "pending"
-        },
-        {
-            "name": "total_amount",
-            "type": "int unsigned",
-            "description": "Order total in cents",
-            "nullable": false
-        },
-        {
-            "name": "created_at",
-            "type": "timestamp",
-            "description": "Order creation timestamp",
-            "nullable": true
-        },
-        {
-            "name": "shipped_at",
-            "type": "timestamp",
-            "description": "Shipping timestamp, null if not shipped",
-            "nullable": true
-        }
-    ],
+    "columns": {
+        "id": "Primary key, auto-incrementing bigint unsigned",
+        "customer_id": "FK -> customers.id, NOT NULL",
+        "status": "Order status: 'pending', 'processing', 'shipped', 'delivered', 'cancelled' (default: 'pending')",
+        "total_amount": "Order total in cents, int unsigned, NOT NULL",
+        "created_at": "Order creation timestamp",
+        "shipped_at": "Shipping timestamp, null if not shipped"
+    },
     "relationships": [
-        {
-            "type": "belongsTo",
-            "related_table": "customers",
-            "foreign_key": "customer_id",
-            "description": "The customer who placed the order"
-        }
+        "Belongs to customers via customer_id -> customers.id"
     ]
 }
 ```
 
-The loader also accepts `description` (or `table_description`), `columns` (or `table_columns`) as alternative field names for backwards compatibility.
+The `table` key is the table name (also accepts `table_name`). The `description` key is the table description (also accepts `table_description`).
 
 ## Business Rules
 

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Knobik\SqlAgent\Data;
 
-use Illuminate\Support\Collection;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
 use Spatie\LaravelData\Data;
 
 class TableSchema extends Data
@@ -13,12 +11,10 @@ class TableSchema extends Data
     public function __construct(
         public string $tableName,
         public ?string $description = null,
-        /** @var Collection<int, ColumnInfo> */
-        #[DataCollectionOf(ColumnInfo::class)]
-        public Collection $columns = new Collection,
-        /** @var Collection<int, RelationshipInfo> */
-        #[DataCollectionOf(RelationshipInfo::class)]
-        public Collection $relationships = new Collection,
+        /** @var array<string, string> column name => description */
+        public array $columns = [],
+        /** @var array<string> relationship descriptions */
+        public array $relationships = [],
         /** @var array<string> */
         public array $dataQualityNotes = [],
         /** @var array<string> */
@@ -42,14 +38,14 @@ class TableSchema extends Data
         }
 
         $output .= "### Columns:\n";
-        foreach ($this->columns as $column) {
-            $output .= "- {$column->toPromptString()}\n";
+        foreach ($this->columns as $name => $description) {
+            $output .= "- {$name}: {$description}\n";
         }
 
-        if ($this->relationships->isNotEmpty()) {
+        if ($this->relationships) {
             $output .= "\n### Relationships:\n";
             foreach ($this->relationships as $relationship) {
-                $output .= "- {$relationship->toPromptString()}\n";
+                $output .= "- {$relationship}\n";
             }
         }
 
@@ -63,28 +59,21 @@ class TableSchema extends Data
         return $output;
     }
 
+    /**
+     * @return array<string>
+     */
     public function getColumnNames(): array
     {
-        return $this->columns->pluck('name')->all();
+        return array_keys($this->columns);
     }
 
-    public function getColumn(string $name): ?ColumnInfo
+    public function getColumn(string $name): ?string
     {
-        return $this->columns->first(fn (ColumnInfo $col) => $col->name === $name);
+        return $this->columns[$name] ?? null;
     }
 
     public function hasColumn(string $name): bool
     {
-        return $this->getColumn($name) !== null;
-    }
-
-    public function getPrimaryKeyColumns(): Collection
-    {
-        return $this->columns->filter(fn (ColumnInfo $col) => $col->isPrimaryKey);
-    }
-
-    public function getForeignKeyColumns(): Collection
-    {
-        return $this->columns->filter(fn (ColumnInfo $col) => $col->isForeignKey);
+        return array_key_exists($name, $this->columns);
     }
 }

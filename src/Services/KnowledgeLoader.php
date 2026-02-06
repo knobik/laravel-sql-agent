@@ -52,15 +52,12 @@ class KnowledgeLoader
         try {
             $data = json_decode(File::get($filePath), true, 512, JSON_THROW_ON_ERROR);
 
-            $tableName = $data['table_name'] ?? null;
+            $tableName = $data['table'] ?? $data['table_name'] ?? null;
             if (! $tableName) {
                 return false;
             }
 
             $connection = $data['connection'] ?? 'default';
-
-            // Convert columns format if needed
-            $columns = $data['table_columns'] ?? $data['columns'] ?? [];
 
             TableMetadata::updateOrCreate(
                 [
@@ -68,8 +65,8 @@ class KnowledgeLoader
                     'table_name' => $tableName,
                 ],
                 [
-                    'description' => $data['table_description'] ?? $data['description'] ?? null,
-                    'columns' => $columns,
+                    'description' => $data['description'] ?? $data['table_description'] ?? null,
+                    'columns' => $data['columns'] ?? [],
                     'relationships' => $data['relationships'] ?? [],
                     'data_quality_notes' => $data['data_quality_notes'] ?? [],
                 ]

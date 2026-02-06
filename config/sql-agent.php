@@ -200,10 +200,20 @@ return [
     |
     | Configure knowledge base settings.
     |
+    | Source options:
+    |   - 'database': Reads knowledge from the sql_agent_table_metadata,
+    |     sql_agent_business_rules, and sql_agent_query_patterns database tables.
+    |     Requires running `php artisan sql-agent:load-knowledge` first to import
+    |     JSON files into the database. Supports full-text search and is the
+    |     recommended option for production.
+    |   - 'files': Reads knowledge directly from JSON files on disk at the
+    |     configured path. No database import needed, but does not support
+    |     full-text search over knowledge.
+    |
     */
     'knowledge' => [
         'path' => env('SQL_AGENT_KNOWLEDGE_PATH', resource_path('sql-agent/knowledge')),
-        'source' => env('SQL_AGENT_KNOWLEDGE_SOURCE', 'files'), // 'files' or 'database'
+        'source' => env('SQL_AGENT_KNOWLEDGE_SOURCE', 'database'),
     ],
 
     /*
