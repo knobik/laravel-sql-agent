@@ -1,19 +1,36 @@
 # Knowledge Base
 
-The knowledge base helps SqlAgent understand your database schema, business rules, and common query patterns.
+- [Introduction](#introduction)
+- [Directory Structure](#directory-structure)
+- [Table Metadata](#table-metadata)
+- [Business Rules](#business-rules)
+- [Query Patterns](#query-patterns)
+    - [JSON Format](#json-format)
+    - [SQL Format](#sql-format)
+- [Loading Knowledge](#loading-knowledge)
+
+## Introduction
+
+The knowledge base provides SqlAgent with the context it needs to write accurate SQL — your database schema, business terminology, metrics definitions, and example queries. Without this context, LLMs must guess at column meanings, business rules, and data quirks.
+
+Knowledge is organized into three types, each stored in its own subdirectory as JSON (or SQL) files.
 
 ## Directory Structure
 
+After running `php artisan sql-agent:install`, the following directory structure is created:
+
 ```
 resources/sql-agent/knowledge/
-├── tables/          # Table metadata (JSON)
-├── business/        # Business rules and metrics (JSON)
-└── queries/         # Query patterns (SQL or JSON)
+├── tables/          # Table metadata
+├── business/        # Business rules, metrics, and gotchas
+└── queries/         # Example query patterns
 ```
 
 ## Table Metadata
 
-Create JSON files in `tables/` to describe your database schema. Columns are a simple map of column name to description string, and relationships are a list of description strings:
+Table metadata files describe your database schema in a way the LLM can understand. Each JSON file in `tables/` describes one table.
+
+Columns are defined as a simple map of column name to description. Relationships are a list of human-readable strings:
 
 ```json
 {
@@ -42,11 +59,23 @@ Create JSON files in `tables/` to describe your database schema. Columns are a s
 }
 ```
 
-The `table` key is the table name (also accepts `table_name`). The `description` key is the table description (also accepts `table_description`).
+**Available fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `table` | Yes | Table name. Also accepts `table_name`. |
+| `description` | No | Human-readable table description. Also accepts `table_description`. |
+| `columns` | No | Map of column name to description string. |
+| `relationships` | No | List of relationship description strings. |
+| `use_cases` | No | List of common use cases for this table. |
+| `data_quality_notes` | No | Caveats about the data (nullability quirks, encoding, units, etc.). |
+
+> [!TIP]
+> Column descriptions are free-form text. Include whatever context helps the LLM — data types, foreign key references, enum values, defaults, and business meaning. The more context you provide, the better the agent's SQL will be.
 
 ## Business Rules
 
-Create JSON files in `business/` to define business logic, metrics, and common pitfalls. Each file can contain three types of entries:
+Business rule files in `business/` define metrics, rules, and common pitfalls. Each file may contain any combination of three entry types:
 
 ```json
 {
@@ -56,12 +85,6 @@ Create JSON files in `business/` to define business logic, metrics, and common p
             "definition": "A customer who has placed an order in the last 90 days",
             "table": "customers",
             "calculation": "WHERE last_order_at > NOW() - INTERVAL 90 DAY"
-        },
-        {
-            "name": "High-Value Order",
-            "definition": "An order with total_amount >= 10000 (i.e. $100+)",
-            "table": "orders",
-            "calculation": "WHERE total_amount >= 10000 AND status != 'cancelled'"
         }
     ],
     "business_rules": [
@@ -73,7 +96,7 @@ Create JSON files in `business/` to define business logic, metrics, and common p
         {
             "issue": "Order total in cents",
             "tables_affected": ["orders"],
-            "solution": "Always divide total_amount by 100 when displaying dollar amounts. SUM(total_amount) / 100 for revenue."
+            "solution": "Always divide total_amount by 100 when displaying dollar amounts."
         },
         {
             "issue": "Timezone handling",
@@ -84,15 +107,16 @@ Create JSON files in `business/` to define business logic, metrics, and common p
 }
 ```
 
-Each type is loaded as a separate `BusinessRule` record with a type of `Metric`, `Rule`, or `Gotcha` (see `BusinessRuleType` enum).
+Each entry is stored as a `BusinessRule` record with a type of `Metric`, `Rule`, or `Gotcha`.
 
-Alternative field names are supported: `rules` (for `business_rules`) and `gotchas` (for `common_gotchas`).
+> [!NOTE]
+> Alternative field names are accepted: `rules` for `business_rules`, and `gotchas` for `common_gotchas`. Business rules may also be simple strings instead of objects.
 
 ## Query Patterns
 
-Create files in `queries/` to teach SqlAgent common query patterns:
+Query patterns teach the agent how to answer common questions. They serve as few-shot examples — when a user asks something similar, the agent can reference these patterns. Files go in `queries/` and may be JSON or SQL.
 
-**JSON format (`queries/revenue.json`):**
+### JSON Format
 
 ```json
 {
@@ -107,7 +131,7 @@ Create files in `queries/` to teach SqlAgent common query patterns:
         {
             "name": "top_customers_by_orders",
             "question": "Find customers with the most orders",
-            "sql": "SELECT c.id, c.name, COUNT(o.id) as order_count, SUM(o.total_amount) / 100 as total_spent FROM customers c JOIN orders o ON o.customer_id = c.id WHERE o.status != 'cancelled' GROUP BY c.id, c.name ORDER BY order_count DESC LIMIT 10",
+            "sql": "SELECT c.id, c.name, COUNT(o.id) as order_count FROM customers c JOIN orders o ON o.customer_id = c.id WHERE o.status != 'cancelled' GROUP BY c.id, c.name ORDER BY order_count DESC LIMIT 10",
             "summary": "Top 10 customers ranked by order count",
             "tables_used": ["customers", "orders"],
             "data_quality_notes": "Excludes cancelled orders from the count"
@@ -116,11 +140,11 @@ Create files in `queries/` to teach SqlAgent common query patterns:
 }
 ```
 
-Alternative field names are supported: `query` (for `sql`), `description` (for `summary`), `tables` (for `tables_used`). A `queries` key can be used instead of `patterns`.
+Alternative field names are accepted: `query` for `sql`, `description` for `summary`, `tables` for `tables_used`, and `queries` for `patterns`.
 
-**SQL format (`queries/top_customers.sql`):**
+### SQL Format
 
-SQL files use XML-like comment tags to define query patterns:
+SQL files use comment tags to define query patterns. This format is convenient when you already have working queries:
 
 ```sql
 -- <query name>active_users_count</query name>
@@ -139,32 +163,27 @@ WHERE deleted_at IS NULL
 -- Find the top 10 authors by total post views
 -- </query description>
 -- <query>
-SELECT
-    u.id,
-    u.name,
-    COUNT(p.id) as post_count,
-    SUM(p.view_count) as total_views
+SELECT u.id, u.name, COUNT(p.id) as post_count, SUM(p.view_count) as total_views
 FROM users u
 JOIN posts p ON p.user_id = u.id
-WHERE u.deleted_at IS NULL
-  AND p.status = 'published'
+WHERE u.deleted_at IS NULL AND p.status = 'published'
 GROUP BY u.id, u.name
 ORDER BY total_views DESC
 LIMIT 10
 -- </query>
 ```
 
-Each `<query name>...</query name>` block defines a separate query pattern. The `<query description>` block is optional and provides context. The `<query>` block contains the actual SQL. Tables are automatically extracted from the SQL.
+Each `<query name>` block defines a separate pattern. The `<query description>` block is optional. Tables are automatically extracted from the SQL.
 
 ## Loading Knowledge
 
-Load all knowledge files into the database:
+After creating or updating your knowledge files, import them into the database using the `sql-agent:load-knowledge` Artisan command:
 
 ```bash
 php artisan sql-agent:load-knowledge
 ```
 
-Load specific types:
+You may load specific types of knowledge individually:
 
 ```bash
 php artisan sql-agent:load-knowledge --tables
@@ -172,14 +191,17 @@ php artisan sql-agent:load-knowledge --rules
 php artisan sql-agent:load-knowledge --queries
 ```
 
-Recreate all knowledge (clears existing):
+To clear all existing knowledge and reimport from scratch, use the `--recreate` flag:
 
 ```bash
 php artisan sql-agent:load-knowledge --recreate
 ```
 
-Use a custom path:
+You may also specify a custom path to your knowledge files:
 
 ```bash
 php artisan sql-agent:load-knowledge --path=/custom/knowledge/path
 ```
+
+> [!IMPORTANT]
+> When using the default `database` knowledge source, you **must** run this command after creating or changing knowledge files. The agent reads from the database at runtime, not directly from disk.

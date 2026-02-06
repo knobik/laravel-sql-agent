@@ -1,10 +1,20 @@
 # Events
 
-SqlAgent dispatches events you can listen to for custom behavior.
+- [Introduction](#introduction)
+- [Available Events](#available-events)
+    - [SqlErrorOccurred](#sql-error-occurred)
+    - [LearningCreated](#learning-created)
+- [Registering Listeners](#registering-listeners)
 
-## SqlErrorOccurred
+## Introduction
 
-Dispatched when a SQL query fails.
+SqlAgent dispatches events at key points during execution. You can listen to these events to add custom logging, notifications, or other side effects.
+
+## Available Events
+
+### `SqlErrorOccurred`
+
+Dispatched when a SQL query executed by the agent fails. The event contains the failed SQL, the error message, the original question, and the database connection:
 
 ```php
 use Knobik\SqlAgent\Events\SqlErrorOccurred;
@@ -23,11 +33,12 @@ class SqlErrorListener
 }
 ```
 
-> **Note:** SqlAgent automatically registers an `AutoLearnFromError` listener for this event that triggers self-learning when `learning.auto_save_errors` is enabled. You do not need to register it yourself.
+> [!NOTE]
+> SqlAgent automatically registers an `AutoLearnFromError` listener for this event when `learning.auto_save_errors` is enabled. You do not need to register it yourself.
 
-## LearningCreated
+### `LearningCreated`
 
-Dispatched when a new learning is created.
+Dispatched when a new learning record is created, either automatically from an error recovery or manually via the `SaveLearningTool`:
 
 ```php
 use Knobik\SqlAgent\Events\LearningCreated;
@@ -36,7 +47,6 @@ class LearningListener
 {
     public function handle(LearningCreated $event): void
     {
-        // Notify team about new learning
         Notification::send($admins, new NewLearningNotification($event->learning));
     }
 }
@@ -44,7 +54,7 @@ class LearningListener
 
 ## Registering Listeners
 
-Register your own listeners in `EventServiceProvider`:
+Register your listeners in your application's `EventServiceProvider` or use Laravel's event discovery:
 
 ```php
 protected $listen = [

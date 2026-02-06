@@ -1,40 +1,58 @@
 # Troubleshooting
 
-## "No knowledge found" or poor results
+- [No Knowledge Found or Poor Results](#no-knowledge-found)
+- [Maximum Iterations Reached](#maximum-iterations)
+- [SQL Errors in Production](#sql-errors)
+- [Slow Response Times](#slow-responses)
+- [LLM API Errors](#llm-api-errors)
+- [Search Not Finding Relevant Knowledge](#search-not-finding)
 
-1. Ensure knowledge files are in the correct format (JSON)
-2. Run `php artisan sql-agent:load-knowledge --recreate`
-3. Check the `sql_agent_table_metadata` table has entries
-4. Add more descriptive column information
+## No Knowledge Found or Poor Results
 
-## "Maximum iterations reached"
+If the agent isn't finding relevant context or producing poor SQL:
 
-The agent couldn't complete the task in the allowed iterations:
+1. Verify your knowledge files are valid JSON and follow the [expected format](/docs/knowledge-base.md#table-metadata).
+2. Reimport your knowledge with `php artisan sql-agent:load-knowledge --recreate`.
+3. Check that the `sql_agent_table_metadata` table has entries: `SELECT COUNT(*) FROM sql_agent_table_metadata`.
+4. Add more descriptive column information — the richer your descriptions, the better the agent performs.
 
-1. Increase `SQL_AGENT_MAX_ITERATIONS` in `.env`
-2. Add more specific knowledge about the tables involved
-3. Simplify the question or break it into smaller queries
+## Maximum Iterations Reached
 
-## SQL errors in production
+The agent couldn't complete the task within the allowed number of tool-calling rounds:
 
-1. Check `sql-agent.sql.allowed_statements` includes needed statement types
-2. Verify the query doesn't use forbidden keywords
-3. Review `sql-agent.sql.max_rows` if truncation is an issue
+1. Increase the limit by setting `SQL_AGENT_MAX_ITERATIONS` in your `.env` file.
+2. Add more specific knowledge about the tables involved so the agent needs fewer introspection steps.
+3. Simplify the question or break it into smaller, more focused queries.
 
-## Slow response times
+## SQL Errors in Production
 
-1. Use a faster model (e.g., `gpt-4o-mini` instead of `gpt-4o`)
-2. Reduce `chat_history_length` to minimize context
-3. Consider using the `database` search driver instead of Scout for simpler setups
+If queries are being rejected or failing:
 
-## LLM API errors
+1. Check that `sql-agent.sql.allowed_statements` includes the statement types your queries need (default: `SELECT` and `WITH`).
+2. Verify the query doesn't use any of the `sql-agent.sql.forbidden_keywords`.
+3. Review `sql-agent.sql.max_rows` if result truncation is causing issues.
 
-1. Verify your API key is correct
-2. Check your API quota/limits
-3. For Ollama, ensure the service is running and the model is downloaded
+## Slow Response Times
 
-## Search not finding relevant knowledge
+If the agent is taking too long to respond:
 
-1. Ensure full-text indexes are created (check migrations ran successfully)
-2. For MySQL, verify the table uses InnoDB or MyISAM engine
-3. Consider using the `hybrid` search driver for better reliability
+1. Use a faster model (e.g., `gpt-4o-mini` instead of `gpt-4o`).
+2. Reduce `chat_history_length` to minimize the context sent to the LLM.
+3. Consider the `database` search driver instead of Scout for simpler setups — it avoids external service round-trips.
+
+## LLM API Errors
+
+If you're getting authentication or connection errors from the LLM provider:
+
+1. Verify your API key is correct and has not expired.
+2. Check your API quota and rate limits with your provider.
+3. For Ollama, ensure the service is running (`ollama serve`) and the model has been pulled (`ollama pull <model>`).
+
+## Search Not Finding Relevant Knowledge
+
+If the search driver isn't returning expected results:
+
+1. Ensure migrations ran successfully — full-text indexes are created in the migrations.
+2. For MySQL, verify the tables use InnoDB or MyISAM engine (both support full-text indexes).
+3. For SQL Server, ensure a full-text catalog is configured.
+4. Consider switching to the `hybrid` search driver for better reliability.

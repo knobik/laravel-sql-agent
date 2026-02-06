@@ -1,10 +1,27 @@
 # LLM & Search Drivers
 
+- [Introduction](#introduction)
+- [LLM Drivers](#llm-drivers)
+    - [OpenAI](#openai)
+    - [Anthropic](#anthropic)
+    - [Ollama](#ollama)
+    - [Custom Drivers](#custom-drivers)
+- [Search Drivers](#search-drivers)
+    - [Database](#database-driver)
+    - [Scout](#scout-driver)
+    - [Hybrid](#hybrid-driver)
+
+## Introduction
+
+SqlAgent uses a driver-based architecture for both LLM providers and knowledge search. You can switch drivers via environment variables without changing any code.
+
 ## LLM Drivers
+
+Set the active LLM driver using the `SQL_AGENT_LLM_DRIVER` environment variable.
 
 ### OpenAI
 
-The default driver. Requires the OpenAI API key.
+The default driver. Supports GPT-4, GPT-4o, and other OpenAI models:
 
 ```env
 OPENAI_API_KEY=sk-your-api-key
@@ -14,7 +31,7 @@ SQL_AGENT_OPENAI_MODEL=gpt-4o
 
 ### Anthropic
 
-Use Claude models from Anthropic.
+Use Claude models from Anthropic:
 
 ```env
 ANTHROPIC_API_KEY=sk-ant-your-api-key
@@ -24,7 +41,7 @@ SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 ### Ollama
 
-Use local models with Ollama. No API key required.
+Run models locally with [Ollama](https://ollama.com). No API key required:
 
 ```env
 SQL_AGENT_LLM_DRIVER=ollama
@@ -32,21 +49,21 @@ OLLAMA_BASE_URL=http://localhost:11434
 SQL_AGENT_OLLAMA_MODEL=llama3.1
 ```
 
-#### Thinking Mode
+**Thinking Mode**
 
-Ollama supports a thinking/reasoning mode for models that provide it. Enable via config or environment:
+Some Ollama models support a reasoning/thinking mode that produces higher-quality results. Enable it via environment or config:
 
 ```env
 SQL_AGENT_OLLAMA_THINK=true
 ```
 
-Accepted values: `true`, `false`, or a budget level string (`"low"`, `"medium"`, `"high"`) for models like GPT-OSS that support granular control.
+Accepted values are `true`, `false`, or a budget level string (`"low"`, `"medium"`, `"high"`) for models like GPT-OSS that support granular control.
 
-When thinking mode is active, the LLM's internal reasoning is captured and available in the streaming SSE events (`thinking` event) and stored in debug metadata.
+When thinking mode is active, the LLM's internal reasoning is captured in streaming SSE events (`thinking` event type) and stored in debug metadata.
 
-#### Tool Support Configuration
+**Tool Support**
 
-Not all Ollama models support tool/function calling. Use `models_with_tool_support` in config to control which models are allowed to use tools:
+Not all Ollama models support tool/function calling. Use the `models_with_tool_support` config option to control which models are allowed to use tools:
 
 ```php
 'ollama' => [
@@ -59,7 +76,7 @@ Not all Ollama models support tool/function calling. Use `models_with_tool_suppo
 
 ### Custom Drivers
 
-Implement the `Knobik\SqlAgent\Contracts\LlmDriver` interface:
+To integrate a provider that isn't built in, implement the `LlmDriver` contract:
 
 ```php
 <?php
@@ -89,7 +106,7 @@ class CustomLlmDriver implements LlmDriver
 }
 ```
 
-Register in a service provider:
+Then register the driver in a service provider:
 
 ```php
 $this->app->bind('sql-agent.llm.custom', CustomLlmDriver::class);
@@ -97,27 +114,28 @@ $this->app->bind('sql-agent.llm.custom', CustomLlmDriver::class);
 
 ## Search Drivers
 
-Search drivers are used to find relevant knowledge (table metadata, business rules, query patterns) based on the user's question.
+Search drivers control how SqlAgent finds relevant knowledge (table metadata, business rules, query patterns) based on the user's question. Set the active driver using `SQL_AGENT_SEARCH_DRIVER`.
 
-### Database Driver
+### Database
 
-Uses native database full-text search. No external services required.
+Uses your database's native full-text search capabilities. No external services required:
 
 ```env
 SQL_AGENT_SEARCH_DRIVER=database
 ```
 
-**MySQL:** Uses `MATCH ... AGAINST` with natural language or boolean mode.
+The behavior varies by database engine:
 
-**PostgreSQL:** Uses `to_tsvector` and `to_tsquery` for full-text search.
+| Database | Implementation | Notes |
+|----------|---------------|-------|
+| MySQL | `MATCH ... AGAINST` | Supports natural language and boolean mode |
+| PostgreSQL | `to_tsvector` / `to_tsquery` | Configurable text search language |
+| SQLite | `LIKE` queries | Less accurate, but functional for development |
+| SQL Server | `CONTAINS` predicates | Requires a full-text catalog to be configured |
 
-**SQLite:** Falls back to `LIKE` queries (less accurate but functional).
+### Scout
 
-**SQL Server:** Uses `CONTAINS` full-text predicates (requires full-text catalog).
-
-### Scout Driver
-
-Integrates with Laravel Scout for external search engines like Meilisearch or Algolia.
+Integrates with [Laravel Scout](https://laravel.com/docs/scout) for external search engines like Meilisearch or Algolia:
 
 ```env
 SQL_AGENT_SEARCH_DRIVER=scout
@@ -126,26 +144,26 @@ MEILISEARCH_HOST=http://localhost:7700
 MEILISEARCH_KEY=your-key
 ```
 
-Requires `laravel/scout` package:
+Requires the `laravel/scout` package:
 
 ```bash
 composer require laravel/scout
 ```
 
-### Hybrid Driver
+### Hybrid
 
-Combines Scout as primary with database as fallback. Useful for reliability.
+Combines Scout as the primary search engine with the database driver as a fallback. Useful when you want the quality of an external search engine with the reliability of a local fallback:
 
 ```env
 SQL_AGENT_SEARCH_DRIVER=hybrid
 ```
 
-Configure in `config/sql-agent.php`:
+Configure the hybrid driver in `config/sql-agent.php`:
 
 ```php
 'hybrid' => [
     'primary' => 'scout',
     'fallback' => 'database',
-    'merge_results' => false, // Set true to combine results from both
+    'merge_results' => false, // Set true to combine results from both drivers
 ],
 ```

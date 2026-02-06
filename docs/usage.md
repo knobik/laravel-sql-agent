@@ -1,52 +1,69 @@
 # Usage
 
+- [Artisan Commands](#artisan-commands)
+    - [sql-agent:install](#install)
+    - [sql-agent:load-knowledge](#load-knowledge)
+    - [sql-agent:eval](#eval)
+    - [sql-agent:export-learnings](#export-learnings)
+    - [sql-agent:import-learnings](#import-learnings)
+    - [sql-agent:prune-learnings](#prune-learnings)
+    - [sql-agent:purge](#purge)
+- [Programmatic Usage](#programmatic-usage)
+    - [Basic Usage](#basic-usage)
+    - [Streaming Responses](#streaming-responses)
+    - [Custom Connection](#custom-connection)
+    - [Conversation History](#conversation-history)
+    - [Dependency Injection](#dependency-injection)
+
 ## Artisan Commands
 
-### sql-agent:install
+### `sql-agent:install`
 
-Install the SqlAgent package.
+Run the initial setup: publishes the configuration file, runs migrations, and creates the knowledge directory structure.
 
 ```bash
 php artisan sql-agent:install
 php artisan sql-agent:install --force  # Overwrite existing files
 ```
 
-### sql-agent:load-knowledge
+### `sql-agent:load-knowledge`
 
-Load knowledge files into the database.
+Import knowledge files from disk into the database. Required when using the default `database` knowledge source.
 
 ```bash
 php artisan sql-agent:load-knowledge
-
-# Options
---recreate        # Drop and recreate all knowledge
---tables          # Load only table metadata
---rules           # Load only business rules
---queries         # Load only query patterns
---path=<path>     # Custom path to knowledge files
 ```
 
-### sql-agent:eval
+| Option | Description |
+|--------|-------------|
+| `--recreate` | Drop and recreate all knowledge before loading |
+| `--tables` | Load only table metadata |
+| `--rules` | Load only business rules |
+| `--queries` | Load only query patterns |
+| `--path=<path>` | Load from a custom directory instead of the configured path |
 
-Run evaluation tests to measure agent accuracy.
+### `sql-agent:eval`
+
+Run evaluation tests to measure the agent's accuracy against known test cases.
 
 ```bash
 php artisan sql-agent:eval
-
-# Options
---category=<cat>  # Filter by category (basic, aggregation, complex, etc.)
---llm-grader      # Use LLM to grade responses
---golden-sql      # Compare against golden SQL results
---connection=<c>  # Use specific database connection
---detailed        # Show detailed output for failed tests
---json            # Output results as JSON
---html=<path>     # Generate HTML report at path
---seed            # Seed test cases before running
 ```
 
-### sql-agent:export-learnings
+| Option | Description |
+|--------|-------------|
+| `--category=<cat>` | Filter by category (`basic`, `aggregation`, `complex`, etc.) |
+| `--llm-grader` | Use an LLM to semantically grade responses |
+| `--golden-sql` | Compare results against golden SQL output |
+| `--connection=<conn>` | Use a specific database connection |
+| `--detailed` | Show detailed output for failed tests |
+| `--json` | Output results as JSON |
+| `--html=<path>` | Generate an HTML report at the given path |
+| `--seed` | Seed test cases before running |
 
-Export learnings to a JSON file.
+### `sql-agent:export-learnings`
+
+Export learnings to a JSON file for backup or sharing across environments.
 
 ```bash
 php artisan sql-agent:export-learnings
@@ -54,45 +71,50 @@ php artisan sql-agent:export-learnings output.json
 php artisan sql-agent:export-learnings --category=type_error
 ```
 
-Categories: `type_error`, `schema_fix`, `query_pattern`, `data_quality`, `business_logic`
+Available categories: `type_error`, `schema_fix`, `query_pattern`, `data_quality`, `business_logic`.
 
-### sql-agent:import-learnings
+### `sql-agent:import-learnings`
 
-Import learnings from a JSON file.
+Import learnings from a previously exported JSON file.
 
 ```bash
 php artisan sql-agent:import-learnings learnings.json
 php artisan sql-agent:import-learnings learnings.json --force  # Include duplicates
 ```
 
-### sql-agent:prune-learnings
+### `sql-agent:prune-learnings`
 
-Remove old or duplicate learnings.
+Remove old or duplicate learnings to keep the knowledge base clean.
 
 ```bash
 php artisan sql-agent:prune-learnings
-
-# Options
---days=90         # Remove learnings older than N days (default: 90)
---duplicates      # Only remove duplicate learnings
---include-used    # Also remove learnings that have been used
---dry-run         # Show what would be removed without removing
 ```
 
-### sql-agent:purge
+| Option | Description |
+|--------|-------------|
+| `--days=90` | Remove learnings older than N days (default: config value) |
+| `--duplicates` | Only remove duplicate learnings |
+| `--include-used` | Also remove learnings that have been referenced |
+| `--dry-run` | Preview what would be removed without deleting |
 
-Purge SqlAgent data from the database. Truncates the selected tables.
+> [!TIP]
+> This command is not scheduled automatically. Add it to your scheduler for hands-off maintenance. See [Configuration — Learning](/docs/configuration.md#learning).
+
+### `sql-agent:purge`
+
+Purge SqlAgent data from the database by truncating the selected tables.
 
 ```bash
 php artisan sql-agent:purge
-
-# Options
---conversations   # Only purge conversations and messages
---learnings       # Only purge learnings
---knowledge       # Only purge knowledge (query patterns, table metadata, business rules)
---all             # Purge everything (default if no options specified)
---force           # Skip confirmation prompt
 ```
+
+| Option | Description |
+|--------|-------------|
+| `--conversations` | Only purge conversations and messages |
+| `--learnings` | Only purge learnings |
+| `--knowledge` | Only purge knowledge (table metadata, business rules, query patterns) |
+| `--all` | Purge everything (default when no options specified) |
+| `--force` | Skip the confirmation prompt |
 
 When `--all` is used (or no options are specified), evaluation test cases are also purged.
 
@@ -100,25 +122,27 @@ When `--all` is used (or no options are specified), evaluation test cases are al
 
 ### Basic Usage
 
+Use the `SqlAgent` facade to ask questions and receive structured responses:
+
 ```php
 use Knobik\SqlAgent\Facades\SqlAgent;
 
 $response = SqlAgent::run('How many users registered last week?');
 
-// Access the response
-$response->answer;      // Natural language answer
-$response->sql;         // The SQL query that was executed
-$response->results;     // Raw query results (array)
+$response->answer;      // "There are 42 users who registered last week."
+$response->sql;         // "SELECT COUNT(*) as count FROM users WHERE ..."
+$response->results;     // [['count' => 42]]
 $response->toolCalls;   // All tool calls made during execution
 $response->iterations;  // Detailed iteration data
-$response->error;       // Error message if failed
+$response->error;       // Error message if failed, null otherwise
 
-// Check status
-$response->isSuccess(); // true if no error
+$response->isSuccess();  // true if no error occurred
 $response->hasResults(); // true if results is not empty
 ```
 
 ### Streaming Responses
+
+For real-time output, use the `stream` method which returns a generator of chunks:
 
 ```php
 use Knobik\SqlAgent\Facades\SqlAgent;
@@ -132,27 +156,27 @@ foreach (SqlAgent::stream('Show me the top 5 customers') as $chunk) {
 }
 ```
 
-**Method signature:**
+The `stream` method accepts the same parameters as `run`, plus conversation history:
 
 ```php
 SqlAgent::stream(
-    string $question,           // The natural language question
-    ?string $connection = null, // Database connection name (null for default)
-    array $history = [],        // Previous conversation messages for context
+    string $question,
+    ?string $connection = null,
+    array $history = [],
 ): Generator
 ```
 
 ### Custom Connection
 
-Query a specific database connection:
+Query a specific database connection by passing it as the second argument:
 
 ```php
 $response = SqlAgent::run('How many orders today?', 'analytics');
 ```
 
-### With Conversation History
+### Conversation History
 
-For the streaming API with chat history:
+For multi-turn conversations, pass previous messages as history:
 
 ```php
 $history = [
@@ -166,6 +190,8 @@ foreach (SqlAgent::stream('Now filter by price > 100', null, $history) as $chunk
 ```
 
 ### Dependency Injection
+
+You may also resolve the agent via dependency injection using the `Agent` contract:
 
 ```php
 use Knobik\SqlAgent\Contracts\Agent;
