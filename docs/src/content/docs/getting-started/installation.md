@@ -1,6 +1,8 @@
 ---
 title: Installation
 description: Install and configure Laravel SQL Agent in your Laravel application.
+sidebar:
+  order: 2
 ---
 
 ## Install via Composer
@@ -73,3 +75,17 @@ $response = SqlAgent::run('How many users signed up this month?');
 echo $response->answer;  // "There are 42 users who signed up this month."
 echo $response->sql;     // "SELECT COUNT(*) as count FROM users WHERE created_at >= '2026-01-01'"
 ```
+
+## Publishing Assets
+
+The install command publishes the config, migrations, and knowledge directory automatically. You can also publish individual assets at any time:
+
+| Tag | Command | Publishes To |
+|-----|---------|-------------|
+| `sql-agent-config` | `php artisan vendor:publish --tag=sql-agent-config` | `config/sql-agent.php` |
+| `sql-agent-migrations` | `php artisan vendor:publish --tag=sql-agent-migrations` | `database/migrations/` |
+| `sql-agent-views` | `php artisan vendor:publish --tag=sql-agent-views` | `resources/views/vendor/sql-agent/` |
+| `sql-agent-knowledge` | `php artisan vendor:publish --tag=sql-agent-knowledge` | `resources/sql-agent/knowledge/` |
+| `sql-agent-prompts` | `php artisan vendor:publish --tag=sql-agent-prompts` | `resources/views/vendor/sql-agent/prompts/` |
+
+Published views and prompts override the package defaults, so you can customize the [chat UI](/laravel-sql-agent/guides/web-interface/#customizing-views) and the [system prompt](/laravel-sql-agent/guides/self-learning/#customizing-the-system-prompt) without modifying the package.

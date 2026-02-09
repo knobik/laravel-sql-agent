@@ -1,6 +1,8 @@
 ---
 title: Events
 description: Event hooks dispatched by SqlAgent for custom logging, notifications, and side effects.
+sidebar:
+  order: 3
 ---
 
 SqlAgent dispatches events at key points during execution. You can listen to these events to add custom logging, notifications, or other side effects.

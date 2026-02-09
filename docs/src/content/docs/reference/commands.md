@@ -1,6 +1,8 @@
 ---
 title: Artisan Commands
 description: All SqlAgent Artisan commands and their options.
+sidebar:
+  order: 1
 ---
 
 ## `sql-agent:install`

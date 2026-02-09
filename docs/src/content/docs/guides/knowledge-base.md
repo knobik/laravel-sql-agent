@@ -1,6 +1,8 @@
 ---
 title: Knowledge Base
 description: Define table metadata, business rules, and query patterns to give the agent context.
+sidebar:
+  order: 2
 ---
 
 The knowledge base provides SqlAgent with the context it needs to write accurate SQL — your database schema, business terminology, metrics definitions, and example queries. Without this context, LLMs must guess at column meanings, business rules, and data quirks.
@@ -17,6 +19,14 @@ resources/sql-agent/knowledge/
 ├── business/        # Business rules, metrics, and gotchas
 └── queries/         # Example query patterns
 ```
+
+The install command publishes a starter skeleton with example files for each type. You can also publish (or re-publish) the knowledge directory at any time:
+
+```bash
+php artisan vendor:publish --tag=sql-agent-knowledge
+```
+
+This copies example files into `resources/sql-agent/knowledge/` — including sample table metadata, business rules, and query patterns — that you can use as a starting point. Replace them with your own files to match your database.
 
 ## Table Metadata
 

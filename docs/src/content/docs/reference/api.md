@@ -1,6 +1,8 @@
 ---
 title: Programmatic API
 description: Use SqlAgent programmatically via the facade or dependency injection.
+sidebar:
+  order: 2
 ---
 
 ## Basic Usage

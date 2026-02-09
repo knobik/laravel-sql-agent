@@ -1,6 +1,8 @@
 ---
 title: LLM & Search Drivers
 description: Configure LLM providers (OpenAI, Anthropic, Ollama) and search drivers for knowledge retrieval.
+sidebar:
+  order: 3
 ---
 
 SqlAgent uses a driver-based architecture for both LLM providers and knowledge search. You can switch drivers via environment variables without changing any code.

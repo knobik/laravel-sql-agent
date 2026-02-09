@@ -1,6 +1,8 @@
 ---
 title: Database Support
 description: Supported database engines and their capabilities with SqlAgent.
+sidebar:
+  order: 4
 ---
 
 SqlAgent supports all four database engines that Laravel supports. The agent can query your application data on any of these engines, and full-text search capabilities vary by engine.

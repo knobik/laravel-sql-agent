@@ -1,6 +1,8 @@
 ---
 title: Configuration
 description: All SqlAgent configuration options — database, LLM, search, safety, and more.
+sidebar:
+  order: 1
 ---
 
 All SqlAgent configuration lives in the `config/sql-agent.php` file. Each option is documented below with its purpose, accepted values, and default.
