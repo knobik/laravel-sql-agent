@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="art/logo.svg" width="200" alt="Laravel SQL Agent">
+</p>
+
 # Laravel SQL Agent
 
 > **Alpha Release** - This package is in early development. APIs may change without notice.

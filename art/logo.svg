@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="redGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF4433"/>
+      <stop offset="100%" stop-color="#CC1A12"/>
+    </linearGradient>
+    <linearGradient id="orangeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FF8C42"/>
+      <stop offset="100%" stop-color="#FF6B20"/>
+    </linearGradient>
+    <linearGradient id="darkGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3B1A12"/>
+      <stop offset="100%" stop-color="#1E0D09"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Shadow -->
+  <ellipse cx="256" cy="440" rx="120" ry="24" fill="#1E0D09" opacity="0.12"/>
+
+  <!-- === Bottom database cylinder === -->
+  <!-- Body -->
+  <path d="M116,310 L116,390 Q116,432 256,432 Q396,432 396,390 L396,310 Q396,352 256,352 Q116,352 116,310Z" fill="url(#darkGrad)"/>
+  <!-- Top ellipse -->
+  <ellipse cx="256" cy="310" rx="140" ry="42" fill="#4A2520"/>
+  <!-- Highlight ring -->
+  <ellipse cx="256" cy="310" rx="140" ry="42" fill="none" stroke="white" stroke-width="3" opacity="0.25"/>
+  <!-- Middle separator line -->
+  <ellipse cx="256" cy="352" rx="140" ry="42" fill="none" stroke="white" stroke-width="3" opacity="0.15"/>
+  <!-- Bottom ellipse highlight -->
+  <ellipse cx="256" cy="390" rx="140" ry="42" fill="none" stroke="white" stroke-width="3" opacity="0.1"/>
+
+  <!-- === Top floating disc === -->
+  <g transform="rotate(-10 256 180)">
+    <!-- Disc body -->
+    <path d="M116,155 L116,200 Q116,242 256,242 Q396,242 396,200 L396,155 Q396,197 256,197 Q116,197 116,155Z" fill="url(#redGrad)"/>
+    <!-- Top ellipse -->
+    <ellipse cx="256" cy="155" rx="140" ry="42" fill="#FF2D20"/>
+    <!-- Bright highlight on top -->
+    <ellipse cx="256" cy="155" rx="140" ry="42" fill="none" stroke="white" stroke-width="4" opacity="0.5"/>
+    <!-- Inner highlight -->
+    <ellipse cx="240" cy="148" rx="80" ry="20" fill="white" opacity="0.12"/>
+    <!-- Separator -->
+    <ellipse cx="256" cy="197" rx="140" ry="42" fill="none" stroke="white" stroke-width="3" opacity="0.2"/>
+  </g>
+
+  <!-- === Magnifying glass between the discs === -->
+  <!-- Glass circle -->
+  <circle cx="220" cy="270" r="40" fill="none" stroke="#FF8C42" stroke-width="10"/>
+  <!-- Glass shine -->
+  <path d="M200,254 Q208,242 224,248" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+  <!-- Handle -->
+  <line x1="248" y1="298" x2="278" y2="328" stroke="#FF8C42" stroke-width="12" stroke-linecap="round"/>
+
+  <!-- Prompt cursor next to glass -->
+  <text x="296" y="290" font-family="monospace" font-weight="bold" font-size="48" fill="#FF8C42">&gt;_</text>
+</svg>
