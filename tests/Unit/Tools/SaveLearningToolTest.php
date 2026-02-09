@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Knobik\SqlAgent\Enums\LearningCategory;
 use Knobik\SqlAgent\Models\Learning;
 use Knobik\SqlAgent\Tools\SaveLearningTool;
+use Prism\Prism\Tool;
 
 uses(RefreshDatabase::class);
 
@@ -24,87 +25,82 @@ afterEach(function () {
 });
 
 describe('SaveLearningTool', function () {
+    it('extends Prism Tool', function () {
+        $tool = new SaveLearningTool;
+
+        expect($tool)->toBeInstanceOf(Tool::class);
+    });
+
     it('saves a learning', function () {
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'title' => 'Test Learning',
-            'description' => 'This is a test learning about the database.',
-            'category' => LearningCategory::SchemaFix->value,
-        ]);
+        $result = json_decode($tool(
+            title: 'Test Learning',
+            description: 'This is a test learning about the database.',
+            category: LearningCategory::SchemaFix->value,
+        ), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data['success'])->toBeTrue();
-        expect($result->data['learning_id'])->toBeInt();
+        expect($result['success'])->toBeTrue();
+        expect($result['learning_id'])->toBeInt();
 
-        $learning = Learning::find($result->data['learning_id']);
+        $learning = Learning::find($result['learning_id']);
         expect($learning->title)->toBe('Test Learning');
     });
 
     it('saves a learning with SQL', function () {
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'title' => 'SQL Pattern',
-            'description' => 'How to count users correctly.',
-            'category' => LearningCategory::QueryPattern->value,
-            'sql' => 'SELECT COUNT(*) FROM users WHERE active = 1',
-        ]);
+        $result = json_decode($tool(
+            title: 'SQL Pattern',
+            description: 'How to count users correctly.',
+            category: LearningCategory::QueryPattern->value,
+            sql: 'SELECT COUNT(*) FROM users WHERE active = 1',
+        ), true);
 
-        expect($result->success)->toBeTrue();
+        expect($result['success'])->toBeTrue();
 
-        $learning = Learning::find($result->data['learning_id']);
+        $learning = Learning::find($result['learning_id']);
         expect($learning->sql)->toBe('SELECT COUNT(*) FROM users WHERE active = 1');
     });
 
     it('requires title', function () {
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'description' => 'Test description',
-            'category' => LearningCategory::SchemaFix->value,
-        ]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('Title is required');
+        expect(fn () => $tool(
+            title: '',
+            description: 'Test description',
+            category: LearningCategory::SchemaFix->value,
+        ))->toThrow(RuntimeException::class, 'Title is required');
     });
 
     it('requires description', function () {
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'title' => 'Test',
-            'category' => LearningCategory::SchemaFix->value,
-        ]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('Description is required');
+        expect(fn () => $tool(
+            title: 'Test',
+            description: '',
+            category: LearningCategory::SchemaFix->value,
+        ))->toThrow(RuntimeException::class, 'Description is required');
     });
 
     it('requires valid category', function () {
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'title' => 'Test',
-            'description' => 'Test description',
-            'category' => 'invalid_category',
-        ]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('Invalid category');
+        expect(fn () => $tool(
+            title: 'Test',
+            description: 'Test description',
+            category: 'invalid_category',
+        ))->toThrow(RuntimeException::class, 'Invalid category');
     });
 
     it('validates title length', function () {
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'title' => str_repeat('a', 101),
-            'description' => 'Test description',
-            'category' => LearningCategory::SchemaFix->value,
-        ]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('100 characters');
+        expect(fn () => $tool(
+            title: str_repeat('a', 101),
+            description: 'Test description',
+            category: LearningCategory::SchemaFix->value,
+        ))->toThrow(RuntimeException::class, '100 characters');
     });
 
     it('has correct name', function () {
@@ -118,14 +114,11 @@ describe('SaveLearningTool', function () {
 
         $tool = new SaveLearningTool;
 
-        $result = $tool->execute([
-            'title' => 'Test',
-            'description' => 'Test description',
-            'category' => LearningCategory::SchemaFix->value,
-        ]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('disabled');
+        expect(fn () => $tool(
+            title: 'Test',
+            description: 'Test description',
+            category: LearningCategory::SchemaFix->value,
+        ))->toThrow(RuntimeException::class, 'disabled');
 
         config(['sql-agent.learning.enabled' => true]);
     });

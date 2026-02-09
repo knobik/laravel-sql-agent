@@ -46,40 +46,23 @@ return [
     | LLM Configuration
     |--------------------------------------------------------------------------
     |
-    | Configure the Large Language Model driver and settings.
+    | Configure the LLM provider and model via Prism PHP.
+    | Supported providers: openai, anthropic, ollama, gemini, mistral, xai, etc.
+    | See https://prismphp.com for all available providers and configuration.
+    |
+    | Provider credentials are configured in config/prism.php (published via
+    | `php artisan vendor:publish --tag=prism-config`).
     |
     */
     'llm' => [
-        'default' => env('SQL_AGENT_LLM_DRIVER', 'openai'),
+        'provider' => env('SQL_AGENT_LLM_PROVIDER', 'openai'),
+        'model' => env('SQL_AGENT_LLM_MODEL', 'gpt-4o'),
+        'temperature' => (float) env('SQL_AGENT_LLM_TEMPERATURE', 0.3),
+        'max_tokens' => (int) env('SQL_AGENT_LLM_MAX_TOKENS', 4096),
 
-        'drivers' => [
-            'openai' => [
-                'api_key' => env('OPENAI_API_KEY'),
-                'model' => env('SQL_AGENT_OPENAI_MODEL', 'gpt-4o'),
-                'temperature' => 0.0,
-                'max_tokens' => 4096,
-            ],
-
-            'anthropic' => [
-                'api_key' => env('ANTHROPIC_API_KEY'),
-                'model' => env('SQL_AGENT_ANTHROPIC_MODEL', 'claude-sonnet-4-20250514'),
-                'temperature' => 0.0,
-                'max_tokens' => 4096,
-            ],
-
-            'ollama' => [
-                'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
-                'model' => env('SQL_AGENT_OLLAMA_MODEL', 'llama3.1'),
-                'temperature' => 0.0,
-                // Enable thinking/reasoning mode for supported models.
-                // Most models accept true/false, but GPT-OSS requires "low", "medium", or "high".
-                // See: https://docs.ollama.com/capabilities/thinking
-                'think' => env('SQL_AGENT_OLLAMA_THINK', true),
-                // Models that support tool/function calling.
-                // null = all models (wildcard), [] = none, ['model1', 'model2'] = specific models
-                'models_with_tool_support' => null,
-            ],
-        ],
+        // Additional provider-specific options passed to Prism's withProviderOptions()
+        // e.g. ['thinking' => true] for Ollama thinking mode
+        'provider_options' => [],
     ],
 
     /*
@@ -267,7 +250,8 @@ return [
     |
     */
     'evaluation' => [
-        // Model to use for LLM grading (should be fast and cheap)
+        // Provider and model to use for LLM grading (should be fast and cheap)
+        'grader_provider' => env('SQL_AGENT_GRADER_PROVIDER', 'openai'),
         'grader_model' => env('SQL_AGENT_GRADER_MODEL', 'gpt-4o-mini'),
 
         // Pass threshold for LLM grading (0.0 - 1.0)

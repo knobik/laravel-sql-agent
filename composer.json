@@ -14,7 +14,8 @@
         "illuminate/database": "^11.0|^12.0",
         "illuminate/console": "^11.0|^12.0",
         "spatie/laravel-data": "^4.0",
-        "doctrine/dbal": "^3.0|^4.0"
+        "doctrine/dbal": "^3.0|^4.0",
+        "prism-php/prism": "^0.99"
     },
     "require-dev": {
         "larastan/larastan": "^3.0",
@@ -26,7 +27,6 @@
         "phpstan/phpstan": "^2.1"
     },
     "suggest": {
-        "openai-php/laravel": "Required for OpenAI LLM driver",
         "livewire/livewire": "Required for the chat UI",
         "laravel/scout": "Required for Scout search driver"
     },

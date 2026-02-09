@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Knobik\SqlAgent\Services;
 
 use Knobik\SqlAgent\Data\GradeResult;
-use Knobik\SqlAgent\Llm\LlmManager;
+use Prism\Prism\Facades\Prism;
 
 class LlmGrader
 {
@@ -34,17 +34,12 @@ PASSED: [true/false]
 REASONING: [brief explanation]
 PROMPT;
 
-    public function __construct(
-        protected LlmManager $llmManager,
-    ) {}
-
     public function grade(
         string $question,
         string $response,
         array $expectedStrings,
         ?array $goldenResult = null,
     ): GradeResult {
-        // Build the expected answer context
         $expectedContext = 'Expected values to appear: '.implode(', ', $expectedStrings);
         if ($goldenResult !== null) {
             $expectedContext .= "\n\nGolden SQL result:\n".$this->formatResult($goldenResult);
@@ -62,19 +57,18 @@ Expected Answer:
 Grade this response.
 MSG;
 
-        // Use the configured grader model
-        $graderModel = config('sql-agent.evaluation.grader_model', 'gpt-4o-mini');
-        $passThreshold = config('sql-agent.evaluation.pass_threshold', 0.6);
+        $passThreshold = config('sql-agent.evaluation.pass_threshold');
 
-        // Create a driver with the grader model
-        $llmResponse = $this->llmManager
-            ->driverWithModel('openai', $graderModel)
-            ->chat([
-                ['role' => 'system', 'content' => self::GRADER_SYSTEM_PROMPT],
-                ['role' => 'user', 'content' => $userMessage],
-            ]);
+        $prismResponse = Prism::text()
+            ->using(
+                config('sql-agent.evaluation.grader_provider'),
+                config('sql-agent.evaluation.grader_model'),
+            )
+            ->withSystemPrompt(self::GRADER_SYSTEM_PROMPT)
+            ->withPrompt($userMessage)
+            ->asText();
 
-        return GradeResult::fromLlmResponse($llmResponse->content, $passThreshold);
+        return GradeResult::fromLlmResponse($prismResponse->text, $passThreshold);
     }
 
     /**
@@ -99,7 +93,6 @@ MSG;
             return ['matches' => false, 'explanation' => 'Actual results are empty but expected has data'];
         }
 
-        // Normalize column names and values (lowercase, strip whitespace)
         $normalizeRow = function (array $row): array {
             $normalized = [];
             foreach ($row as $key => $value) {
@@ -112,7 +105,6 @@ MSG;
         $expectedNormalized = array_map($normalizeRow, $expected);
         $actualNormalized = array_map($normalizeRow, $actual);
 
-        // If key columns specified, only compare those
         if ($keyColumns !== null) {
             $keyCols = array_map(fn ($k) => strtolower(trim($k)), $keyColumns);
             $filterColumns = function (array $rows) use ($keyCols): array {
@@ -128,11 +120,9 @@ MSG;
             $actualNormalized = $filterColumns($actualNormalized);
         }
 
-        // Get first rows for comparison
         $expectedFirst = $expectedNormalized[0] ?? [];
         $actualFirst = $actualNormalized[0] ?? [];
 
-        // For single-row results, check if key values match
         if (count($expectedNormalized) === 1) {
             foreach ($expectedFirst as $key => $expectedVal) {
                 if (isset($actualFirst[$key])) {
@@ -144,7 +134,6 @@ MSG;
                         ];
                     }
                 } else {
-                    // Check if the value appears anywhere in actual
                     $found = false;
                     foreach ($actualNormalized as $row) {
                         foreach ($row as $v) {
@@ -166,7 +155,6 @@ MSG;
             return ['matches' => true, 'explanation' => 'Key values match'];
         }
 
-        // For multi-row results, check if expected values appear in actual
         $expectedValues = [];
         foreach ($expectedNormalized as $row) {
             foreach ($row as $v) {
@@ -198,13 +186,11 @@ MSG;
             return '(empty result)';
         }
 
-        // Get column headers from first row
         $firstRow = $result[0] ?? [];
         $headers = array_keys($firstRow);
         $lines = [implode(' | ', $headers)];
         $lines[] = str_repeat('-', strlen($lines[0]));
 
-        // Limit to 10 rows for grading
         $displayRows = array_slice($result, 0, 10);
         foreach ($displayRows as $row) {
             $values = array_map(fn ($h) => (string) ($row[$h] ?? ''), $headers);

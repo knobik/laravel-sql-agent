@@ -2,8 +2,8 @@
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Knobik\SqlAgent\Contracts\ToolResult;
 use Knobik\SqlAgent\Tools\RunSqlTool;
+use Prism\Prism\Tool;
 
 uses(RefreshDatabase::class);
 
@@ -23,76 +23,66 @@ afterEach(function () {
 });
 
 describe('RunSqlTool', function () {
+    it('extends Prism Tool', function () {
+        $tool = new RunSqlTool;
+
+        expect($tool)->toBeInstanceOf(Tool::class);
+    });
+
     it('executes valid SELECT queries', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute(['sql' => 'SELECT * FROM test_users']);
+        $result = json_decode($tool('SELECT * FROM test_users'), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data['rows'])->toHaveCount(2);
-        expect($result->data['row_count'])->toBe(2);
+        expect($result['rows'])->toHaveCount(2);
+        expect($result['row_count'])->toBe(2);
+    });
+
+    it('sets lastSql and lastResults on success', function () {
+        $tool = new RunSqlTool;
+
+        $tool('SELECT * FROM test_users');
+
+        expect($tool->lastSql)->toBe('SELECT * FROM test_users');
+        expect($tool->lastResults)->toHaveCount(2);
     });
 
     it('executes WITH statements', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute([
-            'sql' => 'WITH user_names AS (SELECT name FROM test_users) SELECT * FROM user_names',
-        ]);
+        $result = json_decode($tool('WITH user_names AS (SELECT name FROM test_users) SELECT * FROM user_names'), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data['rows'])->toHaveCount(2);
+        expect($result['rows'])->toHaveCount(2);
     });
 
     it('rejects empty SQL', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute(['sql' => '']);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('empty');
+        expect(fn () => $tool(''))->toThrow(RuntimeException::class, 'empty');
     });
 
     it('rejects INSERT statements', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute(['sql' => "INSERT INTO test_users (name) VALUES ('Test')"]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('Only');
+        expect(fn () => $tool("INSERT INTO test_users (name) VALUES ('Test')"))->toThrow(RuntimeException::class, 'Only');
     });
 
     it('rejects DROP statements', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute(['sql' => 'DROP TABLE test_users']);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('Only');
+        expect(fn () => $tool('DROP TABLE test_users'))->toThrow(RuntimeException::class, 'Only');
     });
 
     it('rejects SELECT with DELETE keyword', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute(['sql' => 'SELECT * FROM test_users; DELETE FROM test_users']);
-
-        expect($result->success)->toBeFalse();
+        expect(fn () => $tool('SELECT * FROM test_users; DELETE FROM test_users'))->toThrow(RuntimeException::class);
     });
 
     it('rejects UPDATE statements', function () {
         $tool = new RunSqlTool;
 
-        $result = $tool->execute(['sql' => "UPDATE test_users SET name = 'Test'"]);
-
-        expect($result->success)->toBeFalse();
-    });
-
-    it('returns ToolResult', function () {
-        $tool = new RunSqlTool;
-
-        $result = $tool->execute(['sql' => 'SELECT * FROM test_users']);
-
-        expect($result)->toBeInstanceOf(ToolResult::class);
+        expect(fn () => $tool("UPDATE test_users SET name = 'Test'"))->toThrow(RuntimeException::class);
     });
 
     it('has correct name and description', function () {
@@ -102,13 +92,12 @@ describe('RunSqlTool', function () {
         expect($tool->description())->toContain('Execute');
     });
 
-    it('has correct parameters schema', function () {
+    it('has correct parameters', function () {
         $tool = new RunSqlTool;
-        $params = $tool->parameters();
 
-        expect($params['type'])->toBe('object');
-        expect($params['properties'])->toHaveKey('sql');
-        expect($params['required'])->toContain('sql');
+        expect($tool->hasParameters())->toBeTrue();
+        expect($tool->parameters())->toHaveKey('sql');
+        expect($tool->requiredParameters())->toContain('sql');
     });
 
     it('can set connection', function () {

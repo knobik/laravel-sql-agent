@@ -13,18 +13,6 @@ parameters:
 			path: src/Livewire/ConversationList.php
 
 		-
-			message: '#^Call to static method chat\(\) on an unknown class OpenAI\\Laravel\\Facades\\OpenAI\.$#'
-			identifier: class.notFound
-			count: 2
-			path: src/Llm/Drivers/OpenAiDriver.php
-
-		-
-			message: '#^Generator expects value type string, Knobik\\SqlAgent\\Llm\\StreamChunk given\.$#'
-			identifier: generator.valueType
-			count: 2
-			path: src/Llm/Drivers/OpenAiDriver.php
-
-		-
 			message: '#^Method Knobik\\SqlAgent\\Services\\ContextBuilder\:\:searchLearnings\(\) should return Illuminate\\Support\\Collection\<int, array\<string, mixed\>\> but returns Illuminate\\Support\\Collection\<int, array\{title\: string, description\: string, category\: string\|null, sql\: string\|null\}\>\.$#'
 			identifier: return.type
 			count: 2

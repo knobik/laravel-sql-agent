@@ -155,6 +155,28 @@ You are an e-commerce analytics assistant that helps the team understand sales t
 The `{!! $context !!}` variable at the end of the template is required — it injects the assembled knowledge (table metadata, business rules, query patterns, and learnings) that the agent needs to write accurate SQL.
 :::
 
+### Adjusting Temperature
+
+The `temperature` setting in `config/sql-agent.php` controls how deterministic or creative the LLM's responses are:
+
+```php
+'llm' => [
+    'temperature' => (float) env('SQL_AGENT_LLM_TEMPERATURE', 0.3),
+],
+```
+
+| Temperature | Behavior |
+|-------------|----------|
+| `0.0` | Most deterministic — the agent produces concise, consistent answers with minimal variation between runs |
+| `0.3–0.5` | Balanced — slight variation in wording and analysis while staying focused on the question |
+| `0.7–1.0` | More creative — the agent may run additional queries, produce richer analysis, and provide more detailed explanations |
+
+Lower temperatures work best for production environments where you want predictable, repeatable results. Higher temperatures can be useful during development or when you want the agent to explore the data more thoroughly and provide deeper insights.
+
+:::caution
+Higher temperatures increase token usage and response time since the agent may take more steps (additional SQL queries, longer explanations). They also increase the chance of hallucinations — the agent may generate incorrect SQL, reference non-existent columns, misinterpret query results, etc. Start with `0.0` or `0.3` and increase only if you need more exploratory behavior.
+:::
+
 ## Disabling Self-Learning
 
 To disable the self-learning feature entirely:

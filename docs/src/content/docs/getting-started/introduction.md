@@ -22,6 +22,7 @@ This package is based on [Dash](https://github.com/agno-agi/dash) and [OpenAI's 
 
 - PHP 8.2 or higher
 - Laravel 11.x or 12.x
-- An LLM API key (OpenAI, Anthropic, or local Ollama installation)
+- [Prism PHP](https://prismphp.com) (installed automatically as a dependency)
+- An LLM provider — any provider supported by Prism (OpenAI, Anthropic, Ollama, Gemini, Mistral, xAI, etc.)
 - Optional: Livewire 3.x for the chat UI
 - Optional: Laravel Scout for external search engines

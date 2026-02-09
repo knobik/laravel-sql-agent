@@ -23,7 +23,7 @@ class PruneLearningsCommand extends Command
         $daysOption = $this->option('days');
         $days = $daysOption !== null
             ? (int) $daysOption
-            : config('sql-agent.learning.prune_after_days', 90);
+            : config('sql-agent.learning.prune_after_days');
 
         $duplicatesOnly = (bool) $this->option('duplicates');
         $includeUsed = (bool) $this->option('include-used');

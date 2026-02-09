@@ -6,6 +6,7 @@ use Knobik\SqlAgent\Enums\LearningCategory;
 use Knobik\SqlAgent\Models\Learning;
 use Knobik\SqlAgent\Models\QueryPattern;
 use Knobik\SqlAgent\Tools\SearchKnowledgeTool;
+use Prism\Prism\Tool;
 
 uses(RefreshDatabase::class);
 
@@ -50,52 +51,44 @@ describe('SearchKnowledgeTool', function () {
         ]);
     });
 
+    it('extends Prism Tool', function () {
+        $tool = app(SearchKnowledgeTool::class);
+
+        expect($tool)->toBeInstanceOf(Tool::class);
+    });
+
     it('searches query patterns', function () {
         $tool = app(SearchKnowledgeTool::class);
 
-        $result = $tool->execute([
-            'query' => 'users',
-            'type' => 'patterns',
-        ]);
+        $result = json_decode($tool(query: 'users', type: 'patterns'), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data['query_patterns'])->toHaveCount(1);
-        expect($result->data['query_patterns'][0]['name'])->toBe('user_count');
+        expect($result['query_patterns'])->toHaveCount(1);
+        expect($result['query_patterns'][0]['name'])->toBe('user_count');
     });
 
     it('searches learnings', function () {
         $tool = app(SearchKnowledgeTool::class);
 
-        $result = $tool->execute([
-            'query' => 'soft deletes',
-            'type' => 'learnings',
-        ]);
+        $result = json_decode($tool(query: 'soft deletes', type: 'learnings'), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data['learnings'])->toHaveCount(1);
-        expect($result->data['learnings'][0]['title'])->toBe('User table soft deletes');
+        expect($result['learnings'])->toHaveCount(1);
+        expect($result['learnings'][0]['title'])->toBe('User table soft deletes');
     });
 
     it('searches all by default', function () {
         $tool = app(SearchKnowledgeTool::class);
 
-        $result = $tool->execute([
-            'query' => 'user',
-        ]);
+        $result = json_decode($tool(query: 'user'), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data)->toHaveKey('query_patterns');
-        expect($result->data)->toHaveKey('learnings');
-        expect($result->data['total_found'])->toBeGreaterThan(0);
+        expect($result)->toHaveKey('query_patterns');
+        expect($result)->toHaveKey('learnings');
+        expect($result['total_found'])->toBeGreaterThan(0);
     });
 
-    it('requires query', function () {
+    it('rejects empty query', function () {
         $tool = app(SearchKnowledgeTool::class);
 
-        $result = $tool->execute([]);
-
-        expect($result->success)->toBeFalse();
-        expect($result->error)->toContain('empty');
+        expect(fn () => $tool(query: ''))->toThrow(RuntimeException::class, 'empty');
     });
 
     it('respects limit parameter', function () {
@@ -112,14 +105,9 @@ describe('SearchKnowledgeTool', function () {
 
         $tool = app(SearchKnowledgeTool::class);
 
-        $result = $tool->execute([
-            'query' => 'users',
-            'type' => 'patterns',
-            'limit' => 3,
-        ]);
+        $result = json_decode($tool(query: 'users', type: 'patterns', limit: 3), true);
 
-        expect($result->success)->toBeTrue();
-        expect($result->data['query_patterns'])->toHaveCount(3);
+        expect($result['query_patterns'])->toHaveCount(3);
     });
 
     it('has correct name', function () {
@@ -128,10 +116,13 @@ describe('SearchKnowledgeTool', function () {
         expect($tool->name())->toBe('search_knowledge');
     });
 
-    it('enforces max limit of 20', function () {
+    it('has correct parameters', function () {
         $tool = app(SearchKnowledgeTool::class);
-        $params = $tool->parameters();
 
-        expect($params['properties']['limit']['maximum'])->toBe(20);
+        expect($tool->hasParameters())->toBeTrue();
+        expect($tool->parameters())->toHaveKey('query');
+        expect($tool->parameters())->toHaveKey('type');
+        expect($tool->parameters())->toHaveKey('limit');
+        expect($tool->requiredParameters())->toContain('query');
     });
 });

@@ -4,157 +4,42 @@ declare(strict_types=1);
 
 namespace Knobik\SqlAgent\Agent;
 
-use Knobik\SqlAgent\Contracts\ToolResult;
-use Knobik\SqlAgent\Llm\ToolCall;
+use Prism\Prism\Contracts\Message;
+use Prism\Prism\ValueObjects\Messages\AssistantMessage;
+use Prism\Prism\ValueObjects\Messages\UserMessage;
 
 class MessageBuilder
 {
     /**
-     * Build initial messages with system prompt and user question.
-     */
-    public function build(string $systemPrompt, string $question): array
-    {
-        return [
-            [
-                'role' => 'system',
-                'content' => $systemPrompt,
-            ],
-            [
-                'role' => 'user',
-                'content' => $question,
-            ],
-        ];
-    }
-
-    /**
-     * Add conversation history to messages.
+     * Build Prism message objects for the conversation.
      *
-     * @param  array  $messages  Current messages
-     * @param  array  $history  Array of historical messages with 'role' and 'content'
-     */
-    public function withHistory(array $messages, array $history): array
-    {
-        if (empty($history)) {
-            return $messages;
-        }
-
-        // Insert history after system message
-        $systemMessage = array_shift($messages);
-        $userMessage = array_pop($messages);
-
-        return array_merge(
-            [$systemMessage],
-            $history,
-            $messages,
-            [$userMessage]
-        );
-    }
-
-    /**
-     * Create a system message.
-     */
-    public function system(string $content): array
-    {
-        return [
-            'role' => 'system',
-            'content' => $content,
-        ];
-    }
-
-    /**
-     * Create a user message.
-     */
-    public function user(string $content): array
-    {
-        return [
-            'role' => 'user',
-            'content' => $content,
-        ];
-    }
-
-    /**
-     * Create an assistant message.
-     */
-    public function assistant(string $content): array
-    {
-        return [
-            'role' => 'assistant',
-            'content' => $content,
-        ];
-    }
-
-    /**
-     * Create an assistant message with tool calls.
+     * The system prompt is handled separately via withSystemPrompt() on the Prism request.
      *
-     * @param  ToolCall[]  $toolCalls
+     * @param  string  $question  The current user question
+     * @param  array  $history  Previous conversation messages with 'role' and 'content'
+     * @return Message[]
      */
-    public function assistantWithToolCalls(string $content, array $toolCalls): array
+    public function buildPrismMessages(string $question, array $history = []): array
     {
-        return [
-            'role' => 'assistant',
-            'content' => $content,
-            'tool_calls' => array_map(fn (ToolCall $tc) => $tc->toArray(), $toolCalls),
-        ];
-    }
+        $messages = [];
 
-    /**
-     * Create a tool result message.
-     */
-    public function toolResult(ToolCall $toolCall, ToolResult $result): array
-    {
-        $content = $result->success
-            ? $this->formatToolResultData($result->data)
-            : "Error: {$result->error}";
+        foreach ($history as $msg) {
+            $role = $msg['role'] ?? '';
+            $content = $msg['content'] ?? '';
 
-        return [
-            'role' => 'tool',
-            'tool_call_id' => $toolCall->id,
-            'content' => $content,
-        ];
-    }
-
-    /**
-     * Format tool result data for the message.
-     *
-     * Note: We use compact JSON (no pretty print) to avoid issues with some LLM
-     * providers that have trouble parsing nested JSON with newlines in content.
-     */
-    protected function formatToolResultData(mixed $data): string
-    {
-        if (is_string($data)) {
-            return $data;
+            $messages[] = match ($role) {
+                'user' => new UserMessage($content),
+                'assistant' => new AssistantMessage($content),
+                default => null,
+            };
         }
 
-        if (is_array($data)) {
-            return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        }
+        // Filter out nulls (skip system/tool messages from history)
+        $messages = array_values(array_filter($messages));
 
-        if (is_object($data) && method_exists($data, 'toArray')) {
-            return json_encode($data->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        }
-
-        if (is_object($data) && method_exists($data, '__toString')) {
-            return (string) $data;
-        }
-
-        return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    }
-
-    /**
-     * Append a message to the messages array.
-     */
-    public function append(array $messages, array $message): array
-    {
-        $messages[] = $message;
+        // Add current question
+        $messages[] = new UserMessage($question);
 
         return $messages;
-    }
-
-    /**
-     * Append multiple messages to the messages array.
-     */
-    public function appendMany(array $messages, array $newMessages): array
-    {
-        return array_merge($messages, $newMessages);
     }
 }

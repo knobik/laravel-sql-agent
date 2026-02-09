@@ -5,7 +5,6 @@ use Knobik\SqlAgent\Contracts\AgentResponse;
 use Knobik\SqlAgent\Data\EvaluationReport;
 use Knobik\SqlAgent\Data\GradeResult;
 use Knobik\SqlAgent\Data\TestResult;
-use Knobik\SqlAgent\Llm\LlmManager;
 use Knobik\SqlAgent\Services\EvaluationRunner;
 use Knobik\SqlAgent\Services\LlmGrader;
 
@@ -247,8 +246,7 @@ describe('EvaluationReport', function () {
 
 describe('LlmGrader', function () {
     it('can compare empty results', function () {
-        $llmManager = Mockery::mock(LlmManager::class);
-        $grader = new LlmGrader($llmManager);
+        $grader = new LlmGrader;
 
         $comparison = $grader->compareResults([], []);
 
@@ -257,8 +255,7 @@ describe('LlmGrader', function () {
     });
 
     it('detects missing expected data', function () {
-        $llmManager = Mockery::mock(LlmManager::class);
-        $grader = new LlmGrader($llmManager);
+        $grader = new LlmGrader;
 
         $comparison = $grader->compareResults(
             expected: [['name' => 'Hamilton', 'wins' => '11']],
@@ -270,8 +267,7 @@ describe('LlmGrader', function () {
     });
 
     it('detects value mismatch in single row', function () {
-        $llmManager = Mockery::mock(LlmManager::class);
-        $grader = new LlmGrader($llmManager);
+        $grader = new LlmGrader;
 
         $comparison = $grader->compareResults(
             expected: [['name' => 'Hamilton', 'wins' => '11']],
@@ -283,8 +279,7 @@ describe('LlmGrader', function () {
     });
 
     it('matches when values are correct', function () {
-        $llmManager = Mockery::mock(LlmManager::class);
-        $grader = new LlmGrader($llmManager);
+        $grader = new LlmGrader;
 
         $comparison = $grader->compareResults(
             expected: [['name' => 'Hamilton', 'wins' => '11']],
@@ -295,8 +290,7 @@ describe('LlmGrader', function () {
     });
 
     it('is case insensitive', function () {
-        $llmManager = Mockery::mock(LlmManager::class);
-        $grader = new LlmGrader($llmManager);
+        $grader = new LlmGrader;
 
         $comparison = $grader->compareResults(
             expected: [['name' => 'HAMILTON']],

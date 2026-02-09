@@ -1,108 +1,60 @@
 ---
 title: LLM & Search Drivers
-description: Configure LLM providers (OpenAI, Anthropic, Ollama) and search drivers for knowledge retrieval.
+description: Configure LLM providers via Prism PHP and search drivers for knowledge retrieval.
 sidebar:
   order: 3
 ---
 
-SqlAgent uses a driver-based architecture for both LLM providers and knowledge search. You can switch drivers via environment variables without changing any code.
+SqlAgent uses [Prism PHP](https://prismphp.com) for LLM integration and a driver-based architecture for knowledge search. You can switch providers and drivers via environment variables without changing any code.
 
-## LLM Drivers
+## LLM Providers (via Prism PHP)
 
-Set the active LLM driver using the `SQL_AGENT_LLM_DRIVER` environment variable.
-
-### OpenAI
-
-The default driver. Supports GPT-4, GPT-4o, and other OpenAI models:
+SqlAgent delegates all LLM communication to Prism PHP, which provides a unified interface for many providers. Set the active provider and model using environment variables:
 
 ```ini
-OPENAI_API_KEY=sk-your-api-key
-SQL_AGENT_LLM_DRIVER=openai
-SQL_AGENT_OPENAI_MODEL=gpt-4o
+SQL_AGENT_LLM_PROVIDER=openai
+SQL_AGENT_LLM_MODEL=gpt-4o
 ```
 
-### Anthropic
+Provider credentials (API keys, base URLs) are configured in Prism's own config file at `config/prism.php`. Publish it with:
 
-Use Claude models from Anthropic:
-
-```ini
-ANTHROPIC_API_KEY=sk-ant-your-api-key
-SQL_AGENT_LLM_DRIVER=anthropic
-SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
+```bash
+php artisan vendor:publish --tag=prism-config
 ```
 
-### Ollama
+### Available Providers
 
-Run models locally with [Ollama](https://ollama.com). No API key required:
+Prism supports a wide range of providers out of the box. Here are some common options:
 
-```ini
-SQL_AGENT_LLM_DRIVER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-SQL_AGENT_OLLAMA_MODEL=llama3.1
-```
+| Provider | `SQL_AGENT_LLM_PROVIDER` | Example Model |
+|----------|--------------------------|---------------|
+| OpenAI | `openai` | `gpt-4o`, `gpt-4o-mini` |
+| Anthropic | `anthropic` | `claude-sonnet-4-20250514` |
+| Ollama | `ollama` | `llama3.1`, `qwen2.5` |
+| Google Gemini | `gemini` | `gemini-2.0-flash` |
+| Mistral | `mistral` | `mistral-large-latest` |
+| xAI | `xai` | `grok-2` |
 
-**Thinking Mode**
+See the [Prism documentation](https://prismphp.com) for the full list of supported providers and their configuration.
 
-Some Ollama models support a reasoning/thinking mode that produces higher-quality results. Enable it via environment or config:
+### Provider-Specific Options
 
-```ini
-SQL_AGENT_OLLAMA_THINK=true
-```
-
-Accepted values are `true`, `false`, or a budget level string (`"low"`, `"medium"`, `"high"`) for models like GPT-OSS that support granular control.
-
-When thinking mode is active, the LLM's internal reasoning is captured in streaming SSE events (`thinking` event type) and stored in debug metadata.
-
-**Tool Support**
-
-Not all Ollama models support tool/function calling. Use the `models_with_tool_support` config option to control which models are allowed to use tools:
+Use the `provider_options` config array to pass provider-specific options. For example, to enable thinking/reasoning mode on Ollama models:
 
 ```php
-'ollama' => [
-    // ...
-    'models_with_tool_support' => null,        // null = all models (default)
-    // 'models_with_tool_support' => [],        // empty = no models
-    // 'models_with_tool_support' => ['llama3.1', 'qwen2.5'],  // specific models only
+// config/sql-agent.php
+'llm' => [
+    'provider' => 'ollama',
+    'model' => 'qwen2.5',
+    'provider_options' => ['thinking' => true],
 ],
 ```
 
-### Custom Drivers
+These options are passed directly to Prism's `withProviderOptions()` method.
 
-To integrate a provider that isn't built in, implement the `LlmDriver` contract:
+### Adding a Custom Provider
 
-```php
-<?php
-
-namespace App\Llm;
-
-use Generator;
-use Knobik\SqlAgent\Contracts\LlmDriver;
-use Knobik\SqlAgent\Contracts\LlmResponse;
-
-class CustomLlmDriver implements LlmDriver
-{
-    public function chat(array $messages, array $tools = []): LlmResponse
-    {
-        // Your implementation
-    }
-
-    public function stream(array $messages, array $tools = []): Generator
-    {
-        // Your implementation
-    }
-
-    public function supportsToolCalling(): bool
-    {
-        return true;
-    }
-}
-```
-
-Then register the driver in a service provider:
-
-```php
-$this->app->bind('sql-agent.llm.custom', CustomLlmDriver::class);
-```
+Since SqlAgent uses Prism for all LLM communication, adding a new provider means adding it to Prism. See the [Prism documentation](https://prismphp.com) for instructions on registering custom providers.
 
 ## Search Drivers
 

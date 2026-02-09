@@ -24,20 +24,29 @@ This will:
 
 ## Configure Your LLM Provider
 
-Add your LLM API key to `.env`:
+SqlAgent uses [Prism PHP](https://prismphp.com) to communicate with LLM providers. First, publish the Prism config and set your provider credentials:
+
+```bash
+php artisan vendor:publish --tag=prism-config
+```
+
+Then set the provider and model in your `.env`:
 
 ```ini
 # For OpenAI (default)
-OPENAI_API_KEY=sk-your-api-key
+SQL_AGENT_LLM_PROVIDER=openai
+SQL_AGENT_LLM_MODEL=gpt-4o
 
 # Or for Anthropic
-ANTHROPIC_API_KEY=sk-ant-your-api-key
-SQL_AGENT_LLM_DRIVER=anthropic
+SQL_AGENT_LLM_PROVIDER=anthropic
+SQL_AGENT_LLM_MODEL=claude-sonnet-4-20250514
 
 # Or for Ollama (local)
-SQL_AGENT_LLM_DRIVER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
+SQL_AGENT_LLM_PROVIDER=ollama
+SQL_AGENT_LLM_MODEL=llama3.1
 ```
+
+API keys and base URLs are configured in `config/prism.php`. See the [Prism documentation](https://prismphp.com) for provider-specific setup.
 
 ## Quick Start
 

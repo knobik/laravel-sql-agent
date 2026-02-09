@@ -17,7 +17,7 @@ class GradeResult extends Data
     public static function fromLlmResponse(string $response, ?float $passThreshold = null): self
     {
         // Use config threshold or default to 0.6
-        $threshold = $passThreshold ?? config('sql-agent.evaluation.pass_threshold', 0.6);
+        $threshold = $passThreshold ?? config('sql-agent.evaluation.pass_threshold');
 
         // Parse structured response from LLM
         // Expected format:

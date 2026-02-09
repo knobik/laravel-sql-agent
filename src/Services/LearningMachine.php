@@ -112,8 +112,8 @@ class LearningMachine
      */
     public function shouldAutoLearn(): bool
     {
-        return config('sql-agent.learning.enabled', true)
-            && config('sql-agent.learning.auto_save_errors', true);
+        return config('sql-agent.learning.enabled')
+            && config('sql-agent.learning.auto_save_errors');
     }
 
     /**

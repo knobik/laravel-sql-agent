@@ -6,66 +6,49 @@ namespace Knobik\SqlAgent\Tools;
 
 use Knobik\SqlAgent\Search\SearchManager;
 use Knobik\SqlAgent\Search\SearchResult;
+use Prism\Prism\Tool;
 use RuntimeException;
 
-class SearchKnowledgeTool extends BaseTool
+class SearchKnowledgeTool extends Tool
 {
     public function __construct(
         protected SearchManager $searchManager,
-    ) {}
-
-    public function name(): string
-    {
-        return 'search_knowledge';
+    ) {
+        $this
+            ->as('search_knowledge')
+            ->for('Search the knowledge base for relevant query patterns and learnings. Use this to find similar queries, understand business logic, or discover past learnings about the database.')
+            ->withStringParameter('query', 'The search query to find relevant knowledge.')
+            ->withEnumParameter('type', "Filter results: 'all' (default), 'patterns' (saved query patterns), or 'learnings' (discovered fixes/gotchas).", ['all', 'patterns', 'learnings'], required: false)
+            ->withNumberParameter('limit', 'Maximum number of results to return.', required: false)
+            ->using($this);
     }
 
-    public function description(): string
+    public function __invoke(string $query, string $type = 'all', int $limit = 5): string
     {
-        return 'Search the knowledge base for relevant query patterns and learnings. Use this to find similar queries, understand business logic, or discover past learnings about the database.';
-    }
-
-    protected function schema(): array
-    {
-        return $this->objectSchema([
-            'query' => $this->stringProperty('The search query to find relevant knowledge.'),
-            'type' => $this->stringProperty(
-                "Filter results: 'all' (default), 'patterns' (saved query patterns), or 'learnings' (discovered fixes/gotchas).",
-                ['all', 'patterns', 'learnings']
-            ),
-            'limit' => $this->integerProperty('Maximum number of results to return.', 1, 20),
-        ], ['query']);
-    }
-
-    protected function handle(array $parameters): mixed
-    {
-        $query = trim($parameters['query'] ?? '');
-        $type = $parameters['type'] ?? 'all';
-        $limit = min($parameters['limit'] ?? 5, 20);
+        $query = trim($query);
 
         if (empty($query)) {
             throw new RuntimeException('Search query cannot be empty.');
         }
 
-        // Default to 'all' if invalid type provided
         if (! in_array($type, ['all', 'patterns', 'learnings'])) {
             $type = 'all';
         }
 
+        $limit = min($limit, 20);
         $results = [];
 
         if (in_array($type, ['all', 'patterns'])) {
-            $patterns = $this->searchPatterns($query, $limit);
-            $results['query_patterns'] = $patterns;
+            $results['query_patterns'] = $this->searchPatterns($query, $limit);
         }
 
         if (in_array($type, ['all', 'learnings'])) {
-            $learnings = $this->searchLearnings($query, $limit);
-            $results['learnings'] = $learnings;
+            $results['learnings'] = $this->searchLearnings($query, $limit);
         }
 
         $results['total_found'] = count($results['query_patterns'] ?? []) + count($results['learnings'] ?? []);
 
-        return $results;
+        return json_encode($results, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 
     protected function searchPatterns(string $query, int $limit): array
@@ -84,7 +67,7 @@ class SearchKnowledgeTool extends BaseTool
 
     protected function searchLearnings(string $query, int $limit): array
     {
-        if (! config('sql-agent.learning.enabled', true)) {
+        if (! config('sql-agent.learning.enabled')) {
             return [];
         }
 

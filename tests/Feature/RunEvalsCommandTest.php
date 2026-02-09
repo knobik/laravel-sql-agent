@@ -6,9 +6,6 @@ use Knobik\SqlAgent\Database\Seeders\TestCaseSeeder;
 use Knobik\SqlAgent\Models\TestCase;
 
 beforeEach(function () {
-    // Set a fake API key before the service provider boots
-    config(['sql-agent.llm.drivers.openai.api_key' => 'test-key-for-tests']);
-
     // Run migrations
     $this->artisan('migrate', ['--database' => 'testing']);
 });

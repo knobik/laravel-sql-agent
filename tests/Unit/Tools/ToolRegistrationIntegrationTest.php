@@ -3,7 +3,7 @@
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Knobik\SqlAgent\Agent\ToolRegistry;
-use Knobik\SqlAgent\Contracts\Tool;
+use Prism\Prism\Tool;
 
 uses(RefreshDatabase::class);
 
@@ -61,15 +61,13 @@ describe('Tool Registration Integration', function () {
         }
     });
 
-    it('all tools have valid parameter schemas', function () {
+    it('all tools have parameters', function () {
         $registry = app(ToolRegistry::class);
 
         foreach ($registry->all() as $tool) {
-            $params = $tool->parameters();
-
-            expect($params)->toBeArray();
-            expect($params['type'])->toBe('object');
-            expect($params['properties'])->toBeArray();
+            expect($tool->hasParameters())->toBeTrue();
+            expect($tool->parameters())->toBeArray();
+            expect($tool->parameters())->not->toBeEmpty();
         }
     });
 });

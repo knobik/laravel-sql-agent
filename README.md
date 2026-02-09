@@ -29,7 +29,7 @@ This package provides the foundation to build reliable, context-aware data agent
 
 ## Features
 
-- **Multi-LLM Support** - OpenAI (GPT-4, GPT-4o), Anthropic (Claude), and Ollama for local models
+- **Multi-LLM Support** - Any provider supported by [Prism PHP](https://prismphp.com) (OpenAI, Anthropic, Ollama, Gemini, Mistral, xAI, and more)
 - **Multi-Database Support** - MySQL, PostgreSQL, SQLite, and SQL Server
 - **Self-Learning** - Automatically learns from SQL errors and improves over time
 - **Multiple Search Drivers** - Database full-text search, Laravel Scout integration, or hybrid approach
@@ -43,7 +43,8 @@ This package provides the foundation to build reliable, context-aware data agent
 
 - PHP 8.2 or higher
 - Laravel 11.x or 12.x
-- An LLM API key (OpenAI, Anthropic, or local Ollama installation)
+- [Prism PHP](https://prismphp.com) (installed automatically as a dependency)
+- An LLM API key or local Ollama installation
 - Optional: Livewire 3.x for the chat UI
 - Optional: Laravel Scout for external search engines
 
@@ -72,15 +73,16 @@ Add your LLM API key to `.env`:
 
 ```env
 # For OpenAI (default)
-OPENAI_API_KEY=sk-your-api-key
+SQL_AGENT_LLM_PROVIDER=openai
+SQL_AGENT_LLM_MODEL=gpt-4o
 
 # Or for Anthropic
-ANTHROPIC_API_KEY=sk-ant-your-api-key
-SQL_AGENT_LLM_DRIVER=anthropic
+SQL_AGENT_LLM_PROVIDER=anthropic
+SQL_AGENT_LLM_MODEL=claude-sonnet-4-20250514
 
 # Or for Ollama (local)
-SQL_AGENT_LLM_DRIVER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
+SQL_AGENT_LLM_PROVIDER=ollama
+SQL_AGENT_LLM_MODEL=llama3.1
 ```
 
 ## Quick Start

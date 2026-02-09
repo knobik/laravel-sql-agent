@@ -3,9 +3,9 @@
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Knobik\SqlAgent\Agent\ToolRegistry;
-use Knobik\SqlAgent\Contracts\Tool;
 use Knobik\SqlAgent\Tools\RunSqlTool;
 use Knobik\SqlAgent\Tools\SaveLearningTool;
+use Prism\Prism\Tool;
 
 uses(RefreshDatabase::class);
 

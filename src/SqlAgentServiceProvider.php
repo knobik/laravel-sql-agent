@@ -13,13 +13,11 @@ use Knobik\SqlAgent\Agent\SqlAgent;
 use Knobik\SqlAgent\Agent\ToolLabelResolver;
 use Knobik\SqlAgent\Agent\ToolRegistry;
 use Knobik\SqlAgent\Contracts\Agent;
-use Knobik\SqlAgent\Contracts\LlmDriver;
 use Knobik\SqlAgent\Contracts\SearchDriver;
 use Knobik\SqlAgent\Events\SqlErrorOccurred;
 use Knobik\SqlAgent\Listeners\AutoLearnFromError;
 use Knobik\SqlAgent\Livewire\ChatComponent;
 use Knobik\SqlAgent\Livewire\ConversationList;
-use Knobik\SqlAgent\Llm\LlmManager;
 use Knobik\SqlAgent\Search\SearchManager;
 use Knobik\SqlAgent\Services\BusinessRulesLoader;
 use Knobik\SqlAgent\Services\ContextBuilder;
@@ -66,12 +64,6 @@ class SqlAgentServiceProvider extends ServiceProvider
         $this->app->singleton(FallbackResponseGenerator::class);
         $this->app->singleton(EvaluationRunner::class);
 
-        // LLM Manager (needs $app)
-        $this->app->singleton(LlmManager::class, fn ($app) => new LlmManager($app));
-
-        // Bind LlmDriver interface to manager's default driver
-        $this->app->bind(LlmDriver::class, fn ($app) => $app->make(LlmManager::class)->driver());
-
         // Search Manager (needs $app)
         $this->app->singleton(SearchManager::class, fn ($app) => new SearchManager($app));
 
@@ -93,18 +85,8 @@ class SqlAgentServiceProvider extends ServiceProvider
             return $registry;
         });
 
-        // SQL Agent (depends on interfaces that need explicit resolution)
-        $this->app->singleton(SqlAgent::class, function ($app) {
-            return new SqlAgent(
-                $app->make(LlmDriver::class),
-                $app->make(ToolRegistry::class),
-                $app->make(ContextBuilder::class),
-                $app->make(PromptRenderer::class),
-                $app->make(MessageBuilder::class),
-                $app->make(ToolLabelResolver::class),
-                $app->make(FallbackResponseGenerator::class),
-            );
-        });
+        // SQL Agent (auto-resolvable since LlmDriver was removed)
+        $this->app->singleton(SqlAgent::class);
 
         // Bind Agent interface to SqlAgent
         $this->app->bind(Agent::class, SqlAgent::class);
@@ -112,8 +94,8 @@ class SqlAgentServiceProvider extends ServiceProvider
         // Alias for facade accessor
         $this->app->alias(Agent::class, 'sql-agent');
 
-        // LLM Grader (needs LlmManager, not LlmDriver interface)
-        $this->app->singleton(LlmGrader::class, fn ($app) => new LlmGrader($app->make(LlmManager::class)));
+        // LLM Grader (no constructor args, uses Prism directly)
+        $this->app->singleton(LlmGrader::class);
     }
 
     public function boot(): void
@@ -175,7 +157,7 @@ class SqlAgentServiceProvider extends ServiceProvider
             return;
         }
 
-        if (! config('sql-agent.ui.enabled', true)) {
+        if (! config('sql-agent.ui.enabled')) {
             return;
         }
 

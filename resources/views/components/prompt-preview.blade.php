@@ -180,7 +180,14 @@
                                                         {{ ($toolResult['success'] ?? false) ? 'Result:' : 'Error:' }}
                                                     </div>
                                                     @if($toolResult['success'] ?? false)
-                                                        <pre class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">{{ json_encode($toolResult['data'] ?? [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+                                                        @php
+                                                            $resultData = $toolResult['data'] ?? [];
+                                                            if (is_string($resultData)) {
+                                                                $decoded = json_decode($resultData, true);
+                                                                $resultData = $decoded !== null ? $decoded : $resultData;
+                                                            }
+                                                        @endphp
+                                                        <pre class="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap max-h-48 overflow-y-auto custom-scrollbar">{{ is_string($resultData) ? $resultData : json_encode($resultData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
                                                     @else
                                                         <pre class="text-xs text-red-600 dark:text-red-400 whitespace-pre-wrap">{{ $toolResult['error'] ?? 'Unknown error' }}</pre>
                                                     @endif

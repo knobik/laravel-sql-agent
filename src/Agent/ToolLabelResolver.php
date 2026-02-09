@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Knobik\SqlAgent\Agent;
 
 use Knobik\SqlAgent\Llm\StreamChunk;
-use Knobik\SqlAgent\Llm\ToolCall;
 
 class ToolLabelResolver
 {
@@ -35,14 +34,14 @@ class ToolLabelResolver
         return self::TYPES[$toolName] ?? 'default';
     }
 
-    public function buildStreamChunk(ToolCall $toolCall): StreamChunk
+    public function buildStreamChunkFromPrism(string $toolName, array $arguments): StreamChunk
     {
-        $label = $this->getLabel($toolCall->name);
-        $type = $this->getType($toolCall->name);
+        $label = $this->getLabel($toolName);
+        $type = $this->getType($toolName);
 
         $sqlData = '';
-        if ($toolCall->name === 'run_sql') {
-            $sql = $toolCall->arguments['sql'] ?? $toolCall->arguments['query'] ?? '';
+        if ($toolName === 'run_sql') {
+            $sql = $arguments['sql'] ?? $arguments['query'] ?? '';
             $sqlData = ' data-sql="'.htmlspecialchars($sql, ENT_QUOTES, 'UTF-8').'"';
         }
 

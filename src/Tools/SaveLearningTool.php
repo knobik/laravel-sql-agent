@@ -6,48 +6,37 @@ namespace Knobik\SqlAgent\Tools;
 
 use Knobik\SqlAgent\Enums\LearningCategory;
 use Knobik\SqlAgent\Models\Learning;
+use Prism\Prism\Tool;
 use RuntimeException;
 
-class SaveLearningTool extends BaseTool
+class SaveLearningTool extends Tool
 {
-    public function name(): string
-    {
-        return 'save_learning';
-    }
-
-    public function description(): string
-    {
-        return 'Save a new learning to the knowledge base. Use this when you discover something important about the database schema, business logic, or query patterns that would be useful for future queries.';
-    }
-
-    protected function schema(): array
+    public function __construct()
     {
         $categories = array_map(
             fn (LearningCategory $cat) => $cat->value,
             LearningCategory::cases()
         );
 
-        return $this->objectSchema([
-            'title' => $this->stringProperty('A short, descriptive title for the learning (max 100 characters).'),
-            'description' => $this->stringProperty('A detailed description of what was learned and why it matters.'),
-            'category' => $this->stringProperty(
-                'The category of this learning.',
-                $categories
-            ),
-            'sql' => $this->stringProperty('Optional: The SQL query related to this learning.'),
-        ], ['title', 'description', 'category']);
+        $this
+            ->as('save_learning')
+            ->for('Save a new learning to the knowledge base. Use this when you discover something important about the database schema, business logic, or query patterns that would be useful for future queries.')
+            ->withStringParameter('title', 'A short, descriptive title for the learning (max 100 characters).')
+            ->withStringParameter('description', 'A detailed description of what was learned and why it matters.')
+            ->withEnumParameter('category', 'The category of this learning.', $categories)
+            ->withStringParameter('sql', 'Optional: The SQL query related to this learning.', required: false)
+            ->using($this);
     }
 
-    protected function handle(array $parameters): mixed
+    public function __invoke(string $title, string $description, string $category, ?string $sql = null): string
     {
-        if (! config('sql-agent.learning.enabled', true)) {
+        if (! config('sql-agent.learning.enabled')) {
             throw new RuntimeException('Learning feature is disabled.');
         }
 
-        $title = trim($parameters['title'] ?? '');
-        $description = trim($parameters['description'] ?? '');
-        $categoryValue = $parameters['category'] ?? null;
-        $sql = isset($parameters['sql']) ? trim($parameters['sql']) : null;
+        $title = trim($title);
+        $description = trim($description);
+        $sql = $sql !== null ? trim($sql) : null;
 
         if (empty($title)) {
             throw new RuntimeException('Title is required.');
@@ -61,8 +50,8 @@ class SaveLearningTool extends BaseTool
             throw new RuntimeException('Description is required.');
         }
 
-        $category = LearningCategory::tryFrom($categoryValue);
-        if ($category === null) {
+        $categoryEnum = LearningCategory::tryFrom($category);
+        if ($categoryEnum === null) {
             $validCategories = implode(', ', array_map(
                 fn (LearningCategory $cat) => $cat->value,
                 LearningCategory::cases()
@@ -73,16 +62,16 @@ class SaveLearningTool extends BaseTool
         $learning = Learning::create([
             'title' => $title,
             'description' => $description,
-            'category' => $category,
+            'category' => $categoryEnum,
             'sql' => $sql ?: null,
         ]);
 
-        return [
+        return json_encode([
             'success' => true,
             'message' => 'Learning saved successfully.',
             'learning_id' => $learning->id,
             'title' => $learning->title,
             'category' => $learning->category->value,
-        ];
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
 }

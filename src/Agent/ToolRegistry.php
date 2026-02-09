@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Knobik\SqlAgent\Agent;
 
 use InvalidArgumentException;
-use Knobik\SqlAgent\Contracts\Tool;
+use Prism\Prism\Tool;
 
 class ToolRegistry
 {

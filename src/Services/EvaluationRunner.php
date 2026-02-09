@@ -61,7 +61,7 @@ class EvaluationRunner
         ?string $connection = null,
     ): TestResult {
         $startTime = microtime(true);
-        $timeout = config('sql-agent.evaluation.timeout', 60);
+        $timeout = config('sql-agent.evaluation.timeout');
 
         try {
             // Run the agent

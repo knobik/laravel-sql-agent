@@ -7,14 +7,20 @@ namespace Knobik\SqlAgent\Agent;
 use Generator;
 use Knobik\SqlAgent\Contracts\Agent;
 use Knobik\SqlAgent\Contracts\AgentResponse;
-use Knobik\SqlAgent\Contracts\LlmDriver;
-use Knobik\SqlAgent\Contracts\Tool;
-use Knobik\SqlAgent\Contracts\ToolResult;
 use Knobik\SqlAgent\Llm\StreamChunk;
-use Knobik\SqlAgent\Llm\ToolCall;
 use Knobik\SqlAgent\Services\ContextBuilder;
 use Knobik\SqlAgent\Tools\IntrospectSchemaTool;
 use Knobik\SqlAgent\Tools\RunSqlTool;
+use Prism\Prism\Facades\Prism;
+use Prism\Prism\Streaming\Events\StepFinishEvent;
+use Prism\Prism\Streaming\Events\StepStartEvent;
+use Prism\Prism\Streaming\Events\StreamEndEvent;
+use Prism\Prism\Streaming\Events\TextDeltaEvent;
+use Prism\Prism\Streaming\Events\ThinkingEvent;
+use Prism\Prism\Streaming\Events\ToolCallEvent;
+use Prism\Prism\Streaming\Events\ToolResultEvent;
+use Prism\Prism\Text\Response as PrismResponse;
+use Prism\Prism\Tool;
 use Throwable;
 
 class SqlAgent implements Agent
@@ -30,7 +36,6 @@ class SqlAgent implements Agent
     protected ?array $lastPrompt = null;
 
     public function __construct(
-        protected LlmDriver $llm,
         protected ToolRegistry $toolRegistry,
         protected ContextBuilder $contextBuilder,
         protected PromptRenderer $promptRenderer,
@@ -47,31 +52,13 @@ class SqlAgent implements Agent
         try {
             $loop = $this->prepareLoop($question, $connection);
 
-            $messages = $loop->messages;
+            $response = $this->buildPrismRequest($loop)
+                ->asText();
 
-            for ($i = 0; $i < $loop->maxIterations; $i++) {
-                $response = $this->llm->chat($messages, $loop->tools);
+            $this->syncFromRunSqlTool($loop->tools);
+            $this->iterations = $this->extractIterations($response);
 
-                $iterationData = $this->buildIterationData($i, $response->content, $response->toolCalls, $response->finishReason);
-
-                // If no tool calls, we're done
-                if (! $response->hasToolCalls()) {
-                    $this->iterations[] = $iterationData;
-
-                    return $this->buildResponse($response->content);
-                }
-
-                // Execute tool calls
-                $this->processToolCalls($response->toolCalls, $response->content, $messages, $iterationData);
-
-                $this->iterations[] = $iterationData;
-            }
-
-            // Max iterations reached
-            return $this->buildResponse(
-                'I was unable to complete the task within the maximum number of iterations.',
-                'Maximum iterations reached',
-            );
+            return $this->buildResponse($response->text);
         } catch (Throwable $e) {
             return $this->buildErrorResponse($e);
         }
@@ -84,175 +71,180 @@ class SqlAgent implements Agent
 
         $loop = $this->prepareLoop($question, $connection, $history);
 
-        $messages = $loop->messages;
-
-        // Capture the initial prompt for debugging
         $this->lastPrompt = [
             'system' => $loop->systemPrompt,
-            'messages' => $messages,
+            'messages' => $loop->messages,
             'tools' => array_map(fn (Tool $t) => $t->name(), $loop->tools),
             'tools_full' => array_map(fn (Tool $t) => [
                 'name' => $t->name(),
                 'description' => $t->description(),
-                'parameters' => $t->parameters(),
+                'parameters' => $t->parametersAsArray(),
             ], $loop->tools),
         ];
 
-        for ($i = 0; $i < $loop->maxIterations; $i++) {
-            $content = '';
-            $toolCalls = [];
-            $finishReason = null;
+        $fullContent = '';
+        $currentStep = [];
+        $stepIndex = 0;
 
-            foreach ($this->llm->stream($messages, $loop->tools) as $chunk) {
-                /** @var StreamChunk $chunk */
+        try {
+            $events = $this->buildPrismRequest($loop)->asStream();
 
-                // Pass through thinking chunks
-                if ($chunk->hasThinking()) {
-                    yield $chunk;
-                }
-
-                if ($chunk->hasContent()) {
-                    $content .= $chunk->content;
-                    yield $chunk;
-                }
-
-                if ($chunk->isComplete()) {
-                    $toolCalls = $chunk->toolCalls;
-                    $finishReason = $chunk->finishReason;
+            foreach ($events as $event) {
+                if ($event instanceof StepStartEvent) {
+                    $currentStep = ['text' => '', 'tool_calls' => [], 'tool_results' => []];
+                } elseif ($event instanceof TextDeltaEvent) {
+                    $fullContent .= $event->delta;
+                    $currentStep['text'] = ($currentStep['text'] ?? '').$event->delta;
+                    yield StreamChunk::content($event->delta);
+                } elseif ($event instanceof ThinkingEvent) {
+                    yield StreamChunk::thinking($event->delta);
+                } elseif ($event instanceof ToolCallEvent) {
+                    $currentStep['tool_calls'][] = [
+                        'name' => $event->toolCall->name,
+                        'arguments' => $event->toolCall->arguments(),
+                    ];
+                    yield $this->toolLabelResolver->buildStreamChunkFromPrism(
+                        $event->toolCall->name,
+                        $event->toolCall->arguments(),
+                    );
+                } elseif ($event instanceof ToolResultEvent) {
+                    $currentStep['tool_results'][] = [
+                        'tool' => $event->toolResult->toolCallId,
+                        'success' => $event->success,
+                        'data' => $event->success ? $event->toolResult->result : null,
+                        'error' => $event->error,
+                    ];
+                } elseif ($event instanceof StepFinishEvent) {
+                    $stepIndex++;
+                    $this->iterations[] = [
+                        'iteration' => $stepIndex,
+                        'response' => $currentStep['text'] ?? '',
+                        'tool_calls' => $currentStep['tool_calls'] ?? [],
+                        'finish_reason' => ! empty($currentStep['tool_calls']) ? 'toolCalls' : 'stop',
+                        'tool_results' => $currentStep['tool_results'] ?? [],
+                    ];
+                    $currentStep = [];
+                } elseif ($event instanceof StreamEndEvent) {
+                    // Capture any remaining step data not closed by StepFinishEvent
+                    if (! empty($currentStep['tool_calls']) || ! empty($currentStep['text'])) {
+                        $stepIndex++;
+                        $this->iterations[] = [
+                            'iteration' => $stepIndex,
+                            'response' => $currentStep['text'] ?? '',
+                            'tool_calls' => $currentStep['tool_calls'] ?? [],
+                            'finish_reason' => $event->finishReason?->value ?? 'stop',
+                            'tool_results' => $currentStep['tool_results'] ?? [],
+                        ];
+                    }
                 }
             }
 
-            $iterationData = $this->buildIterationData($i, $content, $toolCalls, $finishReason);
+            $this->syncFromRunSqlTool($loop->tools);
 
-            // If no tool calls, we're done
-            if (empty($toolCalls)) {
-                $this->iterations[] = $iterationData;
-
-                // If content is empty but we have results, generate a fallback response
-                if (empty(trim($content)) && $this->lastSql !== null && $this->lastResults !== null) {
-                    $fallbackContent = $this->fallbackResponseGenerator->generate($this->lastResults);
-                    yield new StreamChunk(content: $fallbackContent);
-                }
-
-                yield StreamChunk::complete('stop');
-
-                return;
+            // Fallback if content is empty but we have results
+            if (empty(trim($fullContent)) && $this->lastSql !== null && $this->lastResults !== null) {
+                $fallbackContent = $this->fallbackResponseGenerator->generate($this->lastResults);
+                yield StreamChunk::content($fallbackContent);
             }
 
-            // Execute tool calls with streaming labels
-            $messages = $this->messageBuilder->append(
-                $messages,
-                $this->messageBuilder->assistantWithToolCalls($content, $toolCalls)
-            );
-
-            foreach ($toolCalls as $toolCall) {
-                yield $this->toolLabelResolver->buildStreamChunk($toolCall);
-
-                $result = $this->executeTool($toolCall);
-                $iterationData['tool_results'][] = $this->buildToolResultData($toolCall, $result);
-                $messages = $this->messageBuilder->append(
-                    $messages,
-                    $this->messageBuilder->toolResult($toolCall, $result)
-                );
-            }
-
-            $this->iterations[] = $iterationData;
+            yield StreamChunk::complete('stop');
+        } catch (Throwable $e) {
+            yield StreamChunk::content("\n\nAn error occurred: {$e->getMessage()}");
+            yield StreamChunk::complete('error');
         }
-
-        // Max iterations reached
-        yield StreamChunk::content("\n\nMaximum iterations reached.");
-        yield StreamChunk::complete('max_iterations');
     }
 
-    /**
-     * Get the last SQL query executed.
-     */
     public function getLastSql(): ?string
     {
         return $this->lastSql;
     }
 
-    /**
-     * Get the last query results.
-     */
     public function getLastResults(): ?array
     {
         return $this->lastResults;
     }
 
-    /**
-     * Get all iterations from the last run.
-     */
     public function getIterations(): array
     {
         return $this->iterations;
     }
 
-    /**
-     * Get the last prompt sent to the LLM (for debugging).
-     */
     public function getLastPrompt(): ?array
     {
         return $this->lastPrompt;
     }
 
-    /**
-     * Build iteration data structure shared by run() and stream().
-     *
-     * @param  ToolCall[]  $toolCalls
-     */
-    protected function buildIterationData(int $iteration, string $content, array $toolCalls, ?string $finishReason): array
+    protected function buildPrismRequest(AgentLoopContext $loop): \Prism\Prism\Text\PendingRequest
     {
-        return [
-            'iteration' => $iteration + 1,
-            'response' => $content,
-            'tool_calls' => array_map(
-                fn (ToolCall $tc) => ['name' => $tc->name, 'arguments' => $tc->arguments],
-                $toolCalls
-            ),
-            'finish_reason' => $finishReason,
-            'tool_results' => [],
-        ];
+        $request = Prism::text()
+            ->using(config('sql-agent.llm.provider'), config('sql-agent.llm.model'))
+            ->withSystemPrompt($loop->systemPrompt)
+            ->withMaxSteps($loop->maxIterations)
+            ->usingTemperature(config('sql-agent.llm.temperature'))
+            ->withMaxTokens(config('sql-agent.llm.max_tokens'));
+
+        $providerOptions = config('sql-agent.llm.provider_options');
+        if (! empty($providerOptions)) {
+            $request->withProviderOptions($providerOptions);
+        }
+
+        if (! empty($loop->tools)) {
+            $request->withTools($loop->tools);
+        }
+
+        if (! empty($loop->messages)) {
+            $request->withMessages($loop->messages);
+        }
+
+        return $request;
     }
 
-    /**
-     * Build a tool result data entry for iteration tracking.
-     */
-    protected function buildToolResultData(ToolCall $toolCall, ToolResult $result): array
+    protected function syncFromRunSqlTool(array $tools): void
     {
-        return [
-            'tool' => $toolCall->name,
-            'success' => $result->success,
-            'data' => $result->data,
-            'error' => $result->error,
-        ];
-    }
+        foreach ($tools as $tool) {
+            if ($tool instanceof RunSqlTool) {
+                $this->lastSql = $tool->lastSql;
+                $this->lastResults = $tool->lastResults;
 
-    /**
-     * Process tool calls: append messages and record results (used by run()).
-     *
-     * @param  ToolCall[]  $toolCalls
-     */
-    protected function processToolCalls(array $toolCalls, string $content, array &$messages, array &$iterationData): void
-    {
-        $messages = $this->messageBuilder->append(
-            $messages,
-            $this->messageBuilder->assistantWithToolCalls($content, $toolCalls)
-        );
-
-        foreach ($toolCalls as $toolCall) {
-            $result = $this->executeTool($toolCall);
-            $iterationData['tool_results'][] = $this->buildToolResultData($toolCall, $result);
-            $messages = $this->messageBuilder->append(
-                $messages,
-                $this->messageBuilder->toolResult($toolCall, $result)
-            );
+                return;
+            }
         }
     }
 
-    /**
-     * Build an AgentResponse with current state.
-     */
+    protected function extractIterations(PrismResponse $response): array
+    {
+        $iterations = [];
+
+        foreach ($response->steps as $index => $step) {
+            $toolCalls = array_map(
+                fn (\Prism\Prism\ValueObjects\ToolCall $tc) => [
+                    'name' => $tc->name,
+                    'arguments' => $tc->arguments(),
+                ],
+                $step->toolCalls
+            );
+
+            $toolResults = array_map(
+                fn (\Prism\Prism\ValueObjects\ToolResult $tr) => [
+                    'tool' => $tr->toolCallId,
+                    'success' => true,
+                    'data' => $tr->result,
+                ],
+                $step->toolResults
+            );
+
+            $iterations[] = [
+                'iteration' => $index + 1,
+                'response' => $step->text,
+                'tool_calls' => $toolCalls,
+                'finish_reason' => $step->finishReason->value,
+                'tool_results' => $toolResults,
+            ];
+        }
+
+        return $iterations;
+    }
+
     protected function buildResponse(string $answer, ?string $error = null): AgentResponse
     {
         return new AgentResponse(
@@ -265,9 +257,6 @@ class SqlAgent implements Agent
         );
     }
 
-    /**
-     * Build an error AgentResponse from an exception.
-     */
     protected function buildErrorResponse(Throwable $e): AgentResponse
     {
         return $this->buildResponse(
@@ -280,14 +269,11 @@ class SqlAgent implements Agent
     {
         $context = $this->contextBuilder->build($question, $connection);
         $systemPrompt = $this->promptRenderer->renderSystem($context->toPromptString());
-        $messages = $this->messageBuilder->build($systemPrompt, $question);
 
-        if (! empty($history)) {
-            $messages = $this->messageBuilder->withHistory($messages, $history);
-        }
+        $messages = $this->messageBuilder->buildPrismMessages($question, $history);
 
         $tools = $this->prepareTools($connection, $question);
-        $maxIterations = config('sql-agent.agent.max_iterations', 10);
+        $maxIterations = config('sql-agent.agent.max_iterations');
 
         return new AgentLoopContext($systemPrompt, $messages, $tools, $maxIterations);
     }
@@ -299,6 +285,14 @@ class SqlAgent implements Agent
         $this->iterations = [];
         $this->currentQuestion = null;
         $this->lastPrompt = null;
+
+        // Reset tool state
+        foreach ($this->toolRegistry->all() as $tool) {
+            if ($tool instanceof RunSqlTool) {
+                $tool->lastSql = null;
+                $tool->lastResults = null;
+            }
+        }
     }
 
     /**
@@ -308,7 +302,6 @@ class SqlAgent implements Agent
     {
         $tools = $this->toolRegistry->all();
 
-        // Configure connection and question for tools that need it
         foreach ($tools as $tool) {
             if ($tool instanceof RunSqlTool) {
                 $tool->setConnection($connection);
@@ -319,26 +312,6 @@ class SqlAgent implements Agent
         }
 
         return $tools;
-    }
-
-    protected function executeTool(ToolCall $toolCall): ToolResult
-    {
-        if (! $this->toolRegistry->has($toolCall->name)) {
-            return ToolResult::failure(
-                "Unknown tool: {$toolCall->name}"
-            );
-        }
-
-        $tool = $this->toolRegistry->get($toolCall->name);
-        $result = $tool->execute($toolCall->arguments);
-
-        // Track SQL queries
-        if ($toolCall->name === 'run_sql' && $result->success) {
-            $this->lastSql = $toolCall->arguments['sql'] ?? $toolCall->arguments['query'] ?? null;
-            $this->lastResults = $result->data['rows'] ?? null;
-        }
-
-        return $result;
     }
 
     protected function collectToolCalls(): array

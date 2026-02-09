@@ -29,7 +29,7 @@ class UserResolver
      */
     public function isEnabled(): bool
     {
-        return (bool) config('sql-agent.user.enabled', true);
+        return (bool) config('sql-agent.user.enabled');
     }
 
     /**

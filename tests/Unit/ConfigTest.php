@@ -10,8 +10,6 @@
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Knobik\SqlAgent\Data\GradeResult;
-use Knobik\SqlAgent\Llm\Drivers\OpenAiDriver;
-use Knobik\SqlAgent\Llm\LlmManager;
 use Knobik\SqlAgent\Models\Learning;
 use Knobik\SqlAgent\Search\Drivers\DatabaseSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\HybridSearchDriver;
@@ -53,60 +51,40 @@ describe('Database Configuration', function () {
 });
 
 describe('LLM Configuration', function () {
-    it('uses default driver from config', function () {
-        config(['sql-agent.llm.default' => 'openai']);
+    it('uses provider from config', function () {
+        config(['sql-agent.llm.provider' => 'openai']);
 
-        $manager = app(LlmManager::class);
-
-        expect($manager->getDefaultDriver())->toBe('openai');
+        expect(config('sql-agent.llm.provider'))->toBe('openai');
     });
 
-    it('can change default driver', function () {
-        config(['sql-agent.llm.default' => 'anthropic']);
+    it('can change provider', function () {
+        config(['sql-agent.llm.provider' => 'anthropic']);
 
-        $manager = app(LlmManager::class);
-
-        expect($manager->getDefaultDriver())->toBe('anthropic');
+        expect(config('sql-agent.llm.provider'))->toBe('anthropic');
     });
 
-    it('OpenAI driver uses config values', function () {
-        config(['sql-agent.llm.drivers.openai' => [
-            'api_key' => 'test-key',
-            'model' => 'gpt-4-turbo',
-            'temperature' => 0.5,
-            'max_tokens' => 2048,
-        ]]);
+    it('reads model from config', function () {
+        config(['sql-agent.llm.model' => 'gpt-4-turbo']);
 
-        $driver = new OpenAiDriver(config('sql-agent.llm.drivers.openai'));
-
-        $reflection = new ReflectionClass($driver);
-
-        $modelProp = $reflection->getProperty('model');
-        $modelProp->setAccessible(true);
-        expect($modelProp->getValue($driver))->toBe('gpt-4-turbo');
-
-        $tempProp = $reflection->getProperty('temperature');
-        $tempProp->setAccessible(true);
-        expect($tempProp->getValue($driver))->toBe(0.5);
-
-        $maxTokensProp = $reflection->getProperty('maxTokens');
-        $maxTokensProp->setAccessible(true);
-        expect($maxTokensProp->getValue($driver))->toBe(2048);
+        expect(config('sql-agent.llm.model'))->toBe('gpt-4-turbo');
     });
 
-    it('LlmManager can create driver with custom model', function () {
-        config(['sql-agent.llm.drivers.openai' => [
-            'api_key' => 'test-key',
-            'model' => 'gpt-4o',
-        ]]);
+    it('reads temperature from config', function () {
+        config(['sql-agent.llm.temperature' => 0.5]);
 
-        $manager = app(LlmManager::class);
-        $driver = $manager->driverWithModel('openai', 'gpt-4o-mini');
+        expect(config('sql-agent.llm.temperature'))->toBe(0.5);
+    });
 
-        $reflection = new ReflectionProperty($driver, 'model');
-        $reflection->setAccessible(true);
+    it('reads max_tokens from config', function () {
+        config(['sql-agent.llm.max_tokens' => 2048]);
 
-        expect($reflection->getValue($driver))->toBe('gpt-4o-mini');
+        expect(config('sql-agent.llm.max_tokens'))->toBe(2048);
+    });
+
+    it('reads provider_options from config', function () {
+        config(['sql-agent.llm.provider_options' => ['thinking' => true]]);
+
+        expect(config('sql-agent.llm.provider_options'))->toBe(['thinking' => true]);
     });
 });
 

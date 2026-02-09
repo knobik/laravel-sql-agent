@@ -29,7 +29,7 @@ class StreamAgentResponse
         $fullContent = '';
         $fullThinking = '';
         $cancelled = false;
-        $debugEnabled = config('sql-agent.debug.enabled', false);
+        $debugEnabled = config('sql-agent.debug.enabled');
         $startTime = hrtime(true);
 
         try {

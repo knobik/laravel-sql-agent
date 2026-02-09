@@ -117,7 +117,7 @@ class ConversationService
         }
 
         // Limit history
-        $historyLength = config('sql-agent.agent.chat_history_length', 10);
+        $historyLength = config('sql-agent.agent.chat_history_length');
         if ($messages->count() > $historyLength) {
             $messages = $messages->slice(-$historyLength);
         }

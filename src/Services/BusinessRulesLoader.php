@@ -19,7 +19,7 @@ class BusinessRulesLoader
      */
     public function load(): Collection
     {
-        $source = config('sql-agent.knowledge.source', 'database');
+        $source = config('sql-agent.knowledge.source');
 
         return match ($source) {
             'files' => $this->loadFromFiles(),

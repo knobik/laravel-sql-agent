@@ -2,7 +2,6 @@
 
 use Knobik\SqlAgent\Agent\ToolLabelResolver;
 use Knobik\SqlAgent\Llm\StreamChunk;
-use Knobik\SqlAgent\Llm\ToolCall;
 
 beforeEach(function () {
     $this->resolver = new ToolLabelResolver;
@@ -56,10 +55,9 @@ describe('getType', function () {
     });
 });
 
-describe('buildStreamChunk', function () {
+describe('buildStreamChunkFromPrism', function () {
     it('builds chunk for schema tool', function () {
-        $toolCall = new ToolCall(id: 'tc_1', name: 'introspect_schema', arguments: ['tables' => ['users']]);
-        $chunk = $this->resolver->buildStreamChunk($toolCall);
+        $chunk = $this->resolver->buildStreamChunkFromPrism('introspect_schema', ['tables' => ['users']]);
 
         expect($chunk)->toBeInstanceOf(StreamChunk::class);
         expect($chunk->content)->toContain('data-type="schema"');
@@ -67,8 +65,7 @@ describe('buildStreamChunk', function () {
     });
 
     it('builds chunk for sql tool with data-sql attribute', function () {
-        $toolCall = new ToolCall(id: 'tc_2', name: 'run_sql', arguments: ['sql' => 'SELECT * FROM users']);
-        $chunk = $this->resolver->buildStreamChunk($toolCall);
+        $chunk = $this->resolver->buildStreamChunkFromPrism('run_sql', ['sql' => 'SELECT * FROM users']);
 
         expect($chunk->content)->toContain('data-type="sql"');
         expect($chunk->content)->toContain('data-sql="SELECT * FROM users"');
@@ -76,15 +73,13 @@ describe('buildStreamChunk', function () {
     });
 
     it('escapes html in sql data attribute', function () {
-        $toolCall = new ToolCall(id: 'tc_3', name: 'run_sql', arguments: ['sql' => 'SELECT * FROM users WHERE name = "test"']);
-        $chunk = $this->resolver->buildStreamChunk($toolCall);
+        $chunk = $this->resolver->buildStreamChunkFromPrism('run_sql', ['sql' => 'SELECT * FROM users WHERE name = "test"']);
 
         expect($chunk->content)->toContain('&quot;test&quot;');
     });
 
     it('handles sql in query key', function () {
-        $toolCall = new ToolCall(id: 'tc_4', name: 'run_sql', arguments: ['query' => 'SELECT 1']);
-        $chunk = $this->resolver->buildStreamChunk($toolCall);
+        $chunk = $this->resolver->buildStreamChunkFromPrism('run_sql', ['query' => 'SELECT 1']);
 
         expect($chunk->content)->toContain('data-sql="SELECT 1"');
     });

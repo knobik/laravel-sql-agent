@@ -40,89 +40,68 @@ If your application data lives on a separate database from your main application
 
 ## LLM
 
-SqlAgent supports multiple LLM providers. Set the default driver and configure each provider's credentials and model settings:
+SqlAgent uses [Prism PHP](https://prismphp.com) as its LLM abstraction layer. Prism provides a unified interface for many providers including OpenAI, Anthropic, Ollama, Gemini, Mistral, xAI, and more.
 
 ```php
 'llm' => [
-    'default' => env('SQL_AGENT_LLM_DRIVER', 'openai'),
-
-    'drivers' => [
-        'openai' => [
-            'api_key' => env('OPENAI_API_KEY'),
-            'model' => env('SQL_AGENT_OPENAI_MODEL', 'gpt-4o'),
-            'temperature' => 0.0,
-            'max_tokens' => 4096,
-        ],
-
-        'anthropic' => [
-            'api_key' => env('ANTHROPIC_API_KEY'),
-            'model' => env('SQL_AGENT_ANTHROPIC_MODEL', 'claude-sonnet-4-20250514'),
-            'temperature' => 0.0,
-            'max_tokens' => 4096,
-        ],
-
-        'ollama' => [
-            'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
-            'model' => env('SQL_AGENT_OLLAMA_MODEL', 'llama3.1'),
-            'temperature' => 0.0,
-            'think' => env('SQL_AGENT_OLLAMA_THINK', true),
-            'models_with_tool_support' => null,
-        ],
-    ],
+    'provider' => env('SQL_AGENT_LLM_PROVIDER', 'openai'),
+    'model' => env('SQL_AGENT_LLM_MODEL', 'gpt-4o'),
+    'temperature' => (float) env('SQL_AGENT_LLM_TEMPERATURE', 0.3),
+    'max_tokens' => (int) env('SQL_AGENT_LLM_MAX_TOKENS', 4096),
+    'provider_options' => [],
 ],
 ```
 
-### OpenAI
+| Option | Description | Default |
+|--------|-------------|---------|
+| `provider` | The Prism provider name (`openai`, `anthropic`, `ollama`, `gemini`, etc.) | `openai` |
+| `model` | The model identifier for the chosen provider | `gpt-4o` |
+| `temperature` | Sampling temperature (0.0 = deterministic, 1.0 = creative) | `0.3` |
+| `max_tokens` | Maximum tokens in the LLM response | `4096` |
+| `provider_options` | Additional provider-specific options passed to Prism's `withProviderOptions()` | `[]` |
 
-The default driver. Requires an OpenAI API key:
+Provider credentials (API keys, base URLs) are configured in Prism's own config file. Publish it with:
 
-```ini
-OPENAI_API_KEY=sk-your-api-key
-SQL_AGENT_LLM_DRIVER=openai
-SQL_AGENT_OPENAI_MODEL=gpt-4o
+```bash
+php artisan vendor:publish --tag=prism-config
 ```
 
-### Anthropic
+Then configure your provider in `config/prism.php`. See the [Prism documentation](https://prismphp.com) for details on each provider.
 
-Use Claude models from Anthropic:
+### Quick Setup Examples
 
-```ini
-ANTHROPIC_API_KEY=sk-ant-your-api-key
-SQL_AGENT_LLM_DRIVER=anthropic
-SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
-```
-
-### Ollama
-
-Use locally-hosted models via Ollama. No API key is required:
+**OpenAI** (default):
 
 ```ini
-SQL_AGENT_LLM_DRIVER=ollama
-OLLAMA_BASE_URL=http://localhost:11434
-SQL_AGENT_OLLAMA_MODEL=llama3.1
+SQL_AGENT_LLM_PROVIDER=openai
+SQL_AGENT_LLM_MODEL=gpt-4o
 ```
 
-**Thinking Mode**
+Set your API key in `config/prism.php` or via `OPENAI_API_KEY` in `.env`.
 
-The `think` option enables reasoning mode for models that support it:
+**Anthropic:**
 
-| Value | Behavior |
-|-------|----------|
-| `true` | Enable thinking mode (default) |
-| `false` | Disable thinking mode |
-| `"low"`, `"medium"`, `"high"` | Budget levels for models that support it (e.g., GPT-OSS) |
+```ini
+SQL_AGENT_LLM_PROVIDER=anthropic
+SQL_AGENT_LLM_MODEL=claude-sonnet-4-20250514
+```
 
-When thinking mode is active, the LLM's internal reasoning is captured in the streaming SSE events and stored in debug metadata.
+**Ollama** (local):
 
-**Tool Support**
+```ini
+SQL_AGENT_LLM_PROVIDER=ollama
+SQL_AGENT_LLM_MODEL=llama3.1
+```
 
-Not all Ollama models support tool calling. The `models_with_tool_support` option controls which models may use tools:
+**Thinking Mode** (for models that support it):
 
-| Value | Behavior |
-|-------|----------|
-| `null` | All models can use tools (default) |
-| `[]` | No models can use tools |
-| `['model1', 'model2']` | Only listed models can use tools |
+Use `provider_options` in the config to enable thinking/reasoning mode:
+
+```php
+'provider_options' => ['thinking' => true],
+```
+
+When thinking mode is active, the LLM's internal reasoning is captured in streaming SSE events and stored in debug metadata.
 
 ## Search
 
@@ -299,6 +278,7 @@ Configure the evaluation framework for testing agent accuracy:
 
 ```php
 'evaluation' => [
+    'grader_provider' => env('SQL_AGENT_GRADER_PROVIDER', 'openai'),
     'grader_model' => env('SQL_AGENT_GRADER_MODEL', 'gpt-4o-mini'),
     'pass_threshold' => env('SQL_AGENT_EVAL_PASS_THRESHOLD', 0.6),
     'timeout' => env('SQL_AGENT_EVAL_TIMEOUT', 60),
@@ -307,6 +287,7 @@ Configure the evaluation framework for testing agent accuracy:
 
 | Option | Description | Default |
 |--------|-------------|---------|
+| `grader_provider` | Prism provider used for semantic grading | `openai` |
 | `grader_model` | LLM model used for semantic grading of test results | `gpt-4o-mini` |
 | `pass_threshold` | Minimum score (0.0–1.0) to pass LLM grading | `0.6` |
 | `timeout` | Maximum seconds allowed per test case | `60` |

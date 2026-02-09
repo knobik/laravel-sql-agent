@@ -90,7 +90,7 @@ class ContextBuilder
      */
     protected function searchLearnings(string $question, int $limit = 5): Collection
     {
-        if (! config('sql-agent.learning.enabled', true)) {
+        if (! config('sql-agent.learning.enabled')) {
             return collect();
         }
 

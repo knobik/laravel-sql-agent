@@ -44,7 +44,7 @@ class TableMetadata extends Model
 
     public function scopeForConnection($query, ?string $connection = null)
     {
-        $connection = $connection ?? config('sql-agent.database.connection', 'default');
+        $connection = $connection ?? config('sql-agent.database.connection');
 
         return $query->where('connection', $connection);
     }
