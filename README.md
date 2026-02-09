@@ -49,7 +49,7 @@ This package provides the foundation to build reliable, context-aware data agent
 
 ## Installation
 
-For detailed setup instructions, see the [full documentation](https://knobik.github.io/laravel-sql-agent/installation/).
+For detailed setup instructions, see the [full documentation](https://knobik.github.io/laravel-sql-agent/getting-started/installation/).
 
 Install the package via Composer:
 
@@ -130,7 +130,8 @@ echo $response->sql;     // "SELECT COUNT(*) as count FROM users WHERE created_a
 - [Artisan Commands](https://knobik.github.io/laravel-sql-agent/reference/commands/) - All available commands and options
 - [Programmatic API](https://knobik.github.io/laravel-sql-agent/reference/api/) - Facade, streaming, and dependency injection
 - [Web Interface](https://knobik.github.io/laravel-sql-agent/guides/web-interface/) - Livewire chat UI and debug mode
-- [Evaluation & Self-Learning](https://knobik.github.io/laravel-sql-agent/guides/evaluation/) - Test accuracy and automatic learning
+- [Evaluation](https://knobik.github.io/laravel-sql-agent/guides/evaluation/) - Test accuracy with automated evaluations
+- [Self-Learning](https://knobik.github.io/laravel-sql-agent/guides/self-learning/) - Automatic learning from errors
 - [Events](https://knobik.github.io/laravel-sql-agent/reference/events/) - Event hooks for custom behavior
 - [Database Support](https://knobik.github.io/laravel-sql-agent/reference/database-support/) - MySQL, PostgreSQL, SQLite, SQL Server
 - [Troubleshooting](https://knobik.github.io/laravel-sql-agent/troubleshooting/) - Common issues and solutions
