@@ -133,6 +133,7 @@ echo $response->sql;     // "SELECT COUNT(*) as count FROM users WHERE created_a
 - [Evaluation](https://knobik.github.io/laravel-sql-agent/guides/evaluation/) - Test accuracy with automated evaluations
 - [Self-Learning](https://knobik.github.io/laravel-sql-agent/guides/self-learning/) - Automatic learning from errors
 - [Events](https://knobik.github.io/laravel-sql-agent/reference/events/) - Event hooks for custom behavior
+- [Agent Tools](https://knobik.github.io/laravel-sql-agent/reference/tools/) - All LLM tools with parameters and JSON schemas
 - [Database Support](https://knobik.github.io/laravel-sql-agent/reference/database-support/) - MySQL, PostgreSQL, SQLite, SQL Server
 - [Troubleshooting](https://knobik.github.io/laravel-sql-agent/troubleshooting/) - Common issues and solutions
 
