@@ -1,15 +1,7 @@
-# Knowledge Base
-
-- [Introduction](#introduction)
-- [Directory Structure](#directory-structure)
-- [Table Metadata](#table-metadata)
-- [Business Rules](#business-rules)
-- [Query Patterns](#query-patterns)
-    - [JSON Format](#json-format)
-    - [SQL Format](#sql-format)
-- [Loading Knowledge](#loading-knowledge)
-
-## Introduction
+---
+title: Knowledge Base
+description: Define table metadata, business rules, and query patterns to give the agent context.
+---
 
 The knowledge base provides SqlAgent with the context it needs to write accurate SQL — your database schema, business terminology, metrics definitions, and example queries. Without this context, LLMs must guess at column meanings, business rules, and data quirks.
 
@@ -70,8 +62,9 @@ Columns are defined as a simple map of column name to description. Relationships
 | `use_cases` | No | List of common use cases for this table. |
 | `data_quality_notes` | No | Caveats about the data (nullability quirks, encoding, units, etc.). |
 
-> [!TIP]
-> Column descriptions are free-form text. Include whatever context helps the LLM — data types, foreign key references, enum values, defaults, and business meaning. The more context you provide, the better the agent's SQL will be.
+:::tip
+Column descriptions are free-form text. Include whatever context helps the LLM — data types, foreign key references, enum values, defaults, and business meaning. The more context you provide, the better the agent's SQL will be.
+:::
 
 ## Business Rules
 
@@ -109,8 +102,9 @@ Business rule files in `business/` define metrics, rules, and common pitfalls. E
 
 Each entry is stored as a `BusinessRule` record with a type of `Metric`, `Rule`, or `Gotcha`.
 
-> [!NOTE]
-> Alternative field names are accepted: `rules` for `business_rules`, and `gotchas` for `common_gotchas`. Business rules may also be simple strings instead of objects.
+:::note
+Alternative field names are accepted: `rules` for `business_rules`, and `gotchas` for `common_gotchas`. Business rules may also be simple strings instead of objects.
+:::
 
 ## Query Patterns
 
@@ -203,5 +197,6 @@ You may also specify a custom path to your knowledge files:
 php artisan sql-agent:load-knowledge --path=/custom/knowledge/path
 ```
 
-> [!IMPORTANT]
-> When using the default `database` knowledge source, you **must** run this command after creating or changing knowledge files. The agent reads from the database at runtime, not directly from disk.
+:::caution
+When using the default `database` knowledge source, you **must** run this command after creating or changing knowledge files. The agent reads from the database at runtime, not directly from disk.
+:::

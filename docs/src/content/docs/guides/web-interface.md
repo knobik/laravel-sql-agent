@@ -1,19 +1,7 @@
-# Web Interface
-
-- [Introduction](#introduction)
-- [Accessing the UI](#accessing-the-ui)
-- [Customizing Routes](#customizing-routes)
-- [Disabling the UI](#disabling-the-ui)
-- [Customizing Views](#customizing-views)
-- [Livewire Components](#livewire-components)
-- [Exporting Conversations](#exporting-conversations)
-- [Streaming (SSE)](#streaming)
-- [Debug Mode](#debug-mode)
-    - [Stored Metadata](#stored-metadata)
-    - [Debug Panel](#debug-panel)
-    - [Storage Considerations](#storage-considerations)
-
-## Introduction
+---
+title: Web Interface
+description: Livewire chat UI, streaming, debug mode, and conversation exports.
+---
 
 SqlAgent ships with a ready-to-use Livewire chat interface that you can drop into any Laravel application. It provides a conversational UI for asking questions, viewing SQL results, and browsing conversation history.
 
@@ -41,7 +29,7 @@ You may change the URL prefix and middleware in `config/sql-agent.php`:
 
 To disable the web interface entirely, set `enabled` to `false` in config or via environment:
 
-```env
+```ini
 SQL_AGENT_UI_ENABLED=false
 ```
 
@@ -103,7 +91,7 @@ The chat interface uses Server-Sent Events for real-time streaming. The streamin
 
 When debug mode is enabled, SqlAgent stores detailed metadata alongside each assistant message. This is invaluable during development and troubleshooting:
 
-```env
+```ini
 SQL_AGENT_DEBUG=true
 ```
 
@@ -133,5 +121,6 @@ When debug mode is active, each assistant message in the chat UI shows a **"Debu
 
 Debug metadata can add roughly 50–60 KB per message depending on schema complexity and iteration count. Keep this in mind for long-running conversations and consider periodically purging old conversations if storage is a concern.
 
-> [!WARNING]
-> Debug mode should be disabled in production due to the significant storage overhead and the sensitive information stored in metadata (full system prompts, query results, etc.).
+:::caution
+Debug mode should be disabled in production due to the significant storage overhead and the sensitive information stored in metadata (full system prompts, query results, etc.).
+:::

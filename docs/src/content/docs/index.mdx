@@ -1,0 +1,62 @@
+---
+title: Laravel SQL Agent
+description: A self-learning text-to-SQL agent for Laravel that converts natural language questions into SQL queries using LLMs.
+template: splash
+hero:
+  tagline: A self-learning text-to-SQL agent for Laravel that converts natural language questions into SQL queries using LLMs.
+  actions:
+    - text: Get Started
+      link: /laravel-sql-agent/getting-started/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/knobik/laravel-sql-agent
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Why This Package?
+
+Raw LLMs writing SQL hit a wall fast — schemas lack meaning, types are misleading, tribal knowledge is missing, and the same errors repeat endlessly. The root cause is **missing context and missing memory**.
+
+<CardGrid>
+  <Card title="Knowledge Base" icon="open-book">
+    Curated table metadata, business rules, and query patterns give the LLM the context it needs to write accurate SQL.
+  </Card>
+  <Card title="Self-Learning" icon="rocket">
+    When a query fails and the agent recovers, it saves that learning. Next time, it knows.
+  </Card>
+  <Card title="Multi-LLM Support" icon="puzzle">
+    OpenAI (GPT-4, GPT-4o), Anthropic (Claude), and Ollama for local models — switch drivers via environment variables.
+  </Card>
+  <Card title="SQL Safety" icon="approve-check">
+    Configurable guardrails prevent destructive operations with statement restrictions and row limits.
+  </Card>
+</CardGrid>
+
+## Quick Start
+
+```bash
+composer require knobik/laravel-sql-agent
+php artisan sql-agent:install
+```
+
+Then configure your LLM provider in `.env` and start asking questions:
+
+```php
+use Knobik\SqlAgent\Facades\SqlAgent;
+
+$response = SqlAgent::run('How many users signed up this month?');
+echo $response->answer;
+```
+
+See the [Installation](/laravel-sql-agent/installation/) guide for full setup instructions.
+
+## Features
+
+- **Multi-Database Support** — MySQL, PostgreSQL, SQLite, and SQL Server
+- **Multiple Search Drivers** — Database full-text search, Laravel Scout, or hybrid
+- **Agentic Loop** — Tool calling to introspect schema, run queries, and refine results
+- **Livewire Chat UI** — Ready-to-use chat interface with conversation history
+- **Evaluation Framework** — Test your agent's accuracy with automated evaluations

@@ -1,17 +1,7 @@
-# LLM & Search Drivers
-
-- [Introduction](#introduction)
-- [LLM Drivers](#llm-drivers)
-    - [OpenAI](#openai)
-    - [Anthropic](#anthropic)
-    - [Ollama](#ollama)
-    - [Custom Drivers](#custom-drivers)
-- [Search Drivers](#search-drivers)
-    - [Database](#database-driver)
-    - [Scout](#scout-driver)
-    - [Hybrid](#hybrid-driver)
-
-## Introduction
+---
+title: LLM & Search Drivers
+description: Configure LLM providers (OpenAI, Anthropic, Ollama) and search drivers for knowledge retrieval.
+---
 
 SqlAgent uses a driver-based architecture for both LLM providers and knowledge search. You can switch drivers via environment variables without changing any code.
 
@@ -23,7 +13,7 @@ Set the active LLM driver using the `SQL_AGENT_LLM_DRIVER` environment variable.
 
 The default driver. Supports GPT-4, GPT-4o, and other OpenAI models:
 
-```env
+```ini
 OPENAI_API_KEY=sk-your-api-key
 SQL_AGENT_LLM_DRIVER=openai
 SQL_AGENT_OPENAI_MODEL=gpt-4o
@@ -33,7 +23,7 @@ SQL_AGENT_OPENAI_MODEL=gpt-4o
 
 Use Claude models from Anthropic:
 
-```env
+```ini
 ANTHROPIC_API_KEY=sk-ant-your-api-key
 SQL_AGENT_LLM_DRIVER=anthropic
 SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
@@ -43,7 +33,7 @@ SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 Run models locally with [Ollama](https://ollama.com). No API key required:
 
-```env
+```ini
 SQL_AGENT_LLM_DRIVER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
 SQL_AGENT_OLLAMA_MODEL=llama3.1
@@ -53,7 +43,7 @@ SQL_AGENT_OLLAMA_MODEL=llama3.1
 
 Some Ollama models support a reasoning/thinking mode that produces higher-quality results. Enable it via environment or config:
 
-```env
+```ini
 SQL_AGENT_OLLAMA_THINK=true
 ```
 
@@ -120,7 +110,7 @@ Search drivers control how SqlAgent finds relevant knowledge (table metadata, bu
 
 Uses your database's native full-text search capabilities. No external services required:
 
-```env
+```ini
 SQL_AGENT_SEARCH_DRIVER=database
 ```
 
@@ -137,7 +127,7 @@ The behavior varies by database engine:
 
 Integrates with [Laravel Scout](https://laravel.com/docs/scout) for external search engines like Meilisearch or Algolia:
 
-```env
+```ini
 SQL_AGENT_SEARCH_DRIVER=scout
 SCOUT_DRIVER=meilisearch
 MEILISEARCH_HOST=http://localhost:7700
@@ -154,7 +144,7 @@ composer require laravel/scout
 
 Combines Scout as the primary search engine with the database driver as a fallback. Useful when you want the quality of an external search engine with the reliability of a local fallback:
 
-```env
+```ini
 SQL_AGENT_SEARCH_DRIVER=hybrid
 ```
 

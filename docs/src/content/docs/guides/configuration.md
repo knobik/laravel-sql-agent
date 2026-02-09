@@ -1,23 +1,7 @@
-# Configuration
-
-- [Introduction](#introduction)
-- [Display Name](#display-name)
-- [Database](#database)
-- [LLM](#llm)
-    - [OpenAI](#openai)
-    - [Anthropic](#anthropic)
-    - [Ollama](#ollama)
-- [Search](#search)
-- [Agent Behavior](#agent-behavior)
-- [Learning](#learning)
-- [Knowledge](#knowledge)
-- [Web Interface](#web-interface)
-- [User Tracking](#user-tracking)
-- [SQL Safety](#sql-safety)
-- [Evaluation](#evaluation)
-- [Debug](#debug)
-
-## Introduction
+---
+title: Configuration
+description: All SqlAgent configuration options — database, LLM, search, safety, and more.
+---
 
 All SqlAgent configuration lives in the `config/sql-agent.php` file. Each option is documented below with its purpose, accepted values, and default.
 
@@ -48,8 +32,9 @@ SqlAgent uses two database connections: one for querying your application data, 
 
 The `connection` option determines which database the agent will run queries against. The `storage_connection` option determines where SqlAgent's own tables are stored. By default, both use your application's default connection.
 
-> [!TIP]
-> If your application data lives on a separate database from your main application, set `SQL_AGENT_CONNECTION` accordingly. You may also want to store SqlAgent's tables on a different connection using `SQL_AGENT_STORAGE_CONNECTION`.
+:::tip
+If your application data lives on a separate database from your main application, set `SQL_AGENT_CONNECTION` accordingly. You may also want to store SqlAgent's tables on a different connection using `SQL_AGENT_STORAGE_CONNECTION`.
+:::
 
 ## LLM
 
@@ -89,7 +74,7 @@ SqlAgent supports multiple LLM providers. Set the default driver and configure e
 
 The default driver. Requires an OpenAI API key:
 
-```env
+```ini
 OPENAI_API_KEY=sk-your-api-key
 SQL_AGENT_LLM_DRIVER=openai
 SQL_AGENT_OPENAI_MODEL=gpt-4o
@@ -99,7 +84,7 @@ SQL_AGENT_OPENAI_MODEL=gpt-4o
 
 Use Claude models from Anthropic:
 
-```env
+```ini
 ANTHROPIC_API_KEY=sk-ant-your-api-key
 SQL_AGENT_LLM_DRIVER=anthropic
 SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
@@ -109,7 +94,7 @@ SQL_AGENT_ANTHROPIC_MODEL=claude-sonnet-4-20250514
 
 Use locally-hosted models via Ollama. No API key is required:
 
-```env
+```ini
 SQL_AGENT_LLM_DRIVER=ollama
 OLLAMA_BASE_URL=http://localhost:11434
 SQL_AGENT_OLLAMA_MODEL=llama3.1
@@ -250,7 +235,7 @@ SqlAgent ships with a Livewire chat UI. Configure its routes and access:
 | `route_prefix` | URL prefix for the UI (e.g., `/sql-agent`) | `sql-agent` |
 | `middleware` | Middleware applied to all UI routes | `['web', 'auth']` |
 
-Set `SQL_AGENT_UI_ENABLED=false` to disable the web interface entirely. See [Web Interface](/docs/web-interface.md) for more details on customization.
+Set `SQL_AGENT_UI_ENABLED=false` to disable the web interface entirely. See the [Web Interface](/laravel-sql-agent/guides/web-interface/) guide for more details on customization.
 
 ## User Tracking
 
@@ -324,7 +309,7 @@ Configure the evaluation framework for testing agent accuracy:
 | `pass_threshold` | Minimum score (0.0–1.0) to pass LLM grading | `0.6` |
 | `timeout` | Maximum seconds allowed per test case | `60` |
 
-See [Evaluation & Self-Learning](/docs/evaluation.md) for details on running evaluations.
+See the [Evaluation & Self-Learning](/laravel-sql-agent/guides/evaluation/) guide for details on running evaluations.
 
 ## Debug
 
@@ -338,4 +323,4 @@ Enable debug mode to store detailed metadata alongside each assistant message:
 
 When enabled, each message's `metadata` column will include the full system prompt, tool schemas, iteration details, and timing data. This is useful for development but adds significant storage overhead (~50–60 KB per message). Disable in production.
 
-See [Web Interface — Debug Mode](/docs/web-interface.md#debug-mode) for details on what gets stored and how to inspect it.
+See the [Web Interface — Debug Mode](/laravel-sql-agent/guides/web-interface/#debug-mode) guide for details on what gets stored and how to inspect it.

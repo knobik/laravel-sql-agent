@@ -1,12 +1,7 @@
-# Events
-
-- [Introduction](#introduction)
-- [Available Events](#available-events)
-    - [SqlErrorOccurred](#sql-error-occurred)
-    - [LearningCreated](#learning-created)
-- [Registering Listeners](#registering-listeners)
-
-## Introduction
+---
+title: Events
+description: Event hooks dispatched by SqlAgent for custom logging, notifications, and side effects.
+---
 
 SqlAgent dispatches events at key points during execution. You can listen to these events to add custom logging, notifications, or other side effects.
 
@@ -33,8 +28,9 @@ class SqlErrorListener
 }
 ```
 
-> [!NOTE]
-> SqlAgent automatically registers an `AutoLearnFromError` listener for this event when `learning.auto_save_errors` is enabled. You do not need to register it yourself.
+:::note
+SqlAgent automatically registers an `AutoLearnFromError` listener for this event when `learning.auto_save_errors` is enabled. You do not need to register it yourself.
+:::
 
 ### `LearningCreated`
 

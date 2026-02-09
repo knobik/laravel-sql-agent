@@ -23,6 +23,9 @@ Thumbs.db
 # Build
 /build/
 /dist/
+/docs/node_modules/
+/docs/dist/
+/docs/.astro/
 
 # Environment
 .env

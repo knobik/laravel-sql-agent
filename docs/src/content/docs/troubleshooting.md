@@ -1,17 +1,13 @@
-# Troubleshooting
-
-- [No Knowledge Found or Poor Results](#no-knowledge-found)
-- [Maximum Iterations Reached](#maximum-iterations)
-- [SQL Errors in Production](#sql-errors)
-- [Slow Response Times](#slow-responses)
-- [LLM API Errors](#llm-api-errors)
-- [Search Not Finding Relevant Knowledge](#search-not-finding)
+---
+title: Troubleshooting
+description: Common issues and solutions when using SqlAgent.
+---
 
 ## No Knowledge Found or Poor Results
 
 If the agent isn't finding relevant context or producing poor SQL:
 
-1. Verify your knowledge files are valid JSON and follow the [expected format](/docs/knowledge-base.md#table-metadata).
+1. Verify your knowledge files are valid JSON and follow the [expected format](/laravel-sql-agent/guides/knowledge-base/#table-metadata).
 2. Reimport your knowledge with `php artisan sql-agent:load-knowledge --recreate`.
 3. Check that the `sql_agent_table_metadata` table has entries: `SELECT COUNT(*) FROM sql_agent_table_metadata`.
 4. Add more descriptive column information — the richer your descriptions, the better the agent performs.

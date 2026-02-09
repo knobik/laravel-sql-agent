@@ -1,17 +1,7 @@
-# Evaluation & Self-Learning
-
-- [Introduction](#introduction)
-- [Evaluation System](#evaluation-system)
-    - [Creating Test Cases](#creating-test-cases)
-    - [Running Evaluations](#running-evaluations)
-    - [Evaluation Modes](#evaluation-modes)
-- [Self-Learning](#self-learning)
-    - [How It Works](#how-it-works)
-    - [Learning Categories](#learning-categories)
-    - [Managing Learnings](#managing-learnings)
-    - [Disabling Self-Learning](#disabling-self-learning)
-
-## Introduction
+---
+title: Evaluation & Self-Learning
+description: Test agent accuracy with evaluations and leverage automatic self-learning from errors.
+---
 
 SqlAgent includes an evaluation framework to measure accuracy against known test cases, and a self-learning system that automatically improves over time by recording error recoveries.
 
@@ -126,12 +116,12 @@ php artisan sql-agent:prune-learnings --dry-run
 
 To disable the self-learning feature entirely:
 
-```env
+```ini
 SQL_AGENT_LEARNING_ENABLED=false
 ```
 
 To keep manual learning (via the `SaveLearningTool`) but disable automatic error-based learning:
 
-```env
+```ini
 SQL_AGENT_AUTO_SAVE_ERRORS=false
 ```
