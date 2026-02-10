@@ -25,4 +25,4 @@ This package is based on [Dash](https://github.com/agno-agi/dash) and [OpenAI's 
 - [Prism PHP](https://prismphp.com) (installed automatically as a dependency)
 - An LLM provider — any provider supported by Prism (OpenAI, Anthropic, Ollama, Gemini, Mistral, xAI, etc.)
 - Optional: Livewire 3.x for the chat UI
-- Optional: Laravel Scout for external search engines
+- Optional: PostgreSQL with pgvector for semantic similarity search via vector embeddings

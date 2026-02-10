@@ -36,7 +36,7 @@ This package provides the foundation to build reliable, context-aware data agent
 - **Multi-LLM Support** - Any provider supported by [Prism PHP](https://prismphp.com) (OpenAI, Anthropic, Ollama, Gemini, Mistral, xAI, and more)
 - **Multi-Database Support** - MySQL, PostgreSQL, SQLite, and SQL Server
 - **Self-Learning** - Automatically learns from SQL errors and improves over time
-- **Multiple Search Drivers** - Database full-text search, Laravel Scout integration, or hybrid approach
+- **Multiple Search Drivers** - Database full-text search or pgvector semantic search
 - **Agentic Loop** - Uses tool calling to introspect schema, run queries, and refine results
 - **Livewire Chat UI** - Ready-to-use chat interface with conversation history
 - **Knowledge Base System** - Define table metadata, business rules, and query patterns
@@ -50,7 +50,7 @@ This package provides the foundation to build reliable, context-aware data agent
 - [Prism PHP](https://prismphp.com) (installed automatically as a dependency)
 - An LLM API key or local Ollama installation
 - Optional: Livewire 3.x for the chat UI
-- Optional: Laravel Scout for external search engines
+- Optional: PostgreSQL with pgvector for semantic similarity search via vector embeddings
 
 ## Installation
 

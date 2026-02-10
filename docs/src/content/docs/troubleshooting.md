@@ -34,7 +34,7 @@ If the agent is taking too long to respond:
 
 1. Use a faster model (e.g., `gpt-4o-mini` instead of `gpt-4o`).
 2. Reduce `chat_history_length` to minimize the context sent to the LLM.
-3. Consider the `database` search driver instead of Scout for simpler setups — it avoids external service round-trips.
+3. Consider the `database` search driver for simpler setups — it avoids external service round-trips.
 
 ## LLM API Errors
 
@@ -51,4 +51,4 @@ If the search driver isn't returning expected results:
 1. Ensure migrations ran successfully — full-text indexes are created in the migrations.
 2. For MySQL, verify the tables use InnoDB or MyISAM engine (both support full-text indexes).
 3. For SQL Server, ensure a full-text catalog is configured.
-4. Consider switching to the `hybrid` search driver for better reliability.
+4. Consider switching to the `pgvector` search driver for semantic similarity search.

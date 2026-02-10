@@ -2,7 +2,7 @@
 title: Evaluation
 description: Test agent accuracy with automated evaluations against known test cases.
 sidebar:
-  order: 5
+  order: 6
 ---
 
 The evaluation system helps you measure and improve your agent's accuracy by running it against a suite of test cases with known expected outcomes.

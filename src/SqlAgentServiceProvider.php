@@ -169,16 +169,7 @@ class SqlAgentServiceProvider extends ServiceProvider
     {
         $driver = config('sql-agent.search.default');
 
-        // Check if pgvector is the active driver (directly or as primary/fallback in hybrid)
-        $pgvectorActive = $driver === 'pgvector';
-
-        if (! $pgvectorActive && $driver === 'hybrid') {
-            $hybridConfig = config('sql-agent.search.drivers.hybrid', []);
-            $pgvectorActive = ($hybridConfig['primary'] ?? '') === 'pgvector'
-                || ($hybridConfig['fallback'] ?? '') === 'pgvector';
-        }
-
-        if (! $pgvectorActive) {
+        if ($driver !== 'pgvector') {
             return;
         }
 

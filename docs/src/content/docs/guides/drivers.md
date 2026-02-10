@@ -2,7 +2,7 @@
 title: LLM & Search Drivers
 description: Configure LLM providers via Prism PHP and search drivers for knowledge retrieval.
 sidebar:
-  order: 3
+  order: 4
 ---
 
 SqlAgent uses [Prism PHP](https://prismphp.com) for LLM integration and a driver-based architecture for knowledge search. You can switch providers and drivers via environment variables without changing any code.
@@ -77,23 +77,6 @@ The behavior varies by database engine:
 | SQLite | `LIKE` queries | Less accurate, but functional for development |
 | SQL Server | `CONTAINS` predicates | Requires a full-text catalog to be configured |
 
-### Scout
-
-Integrates with [Laravel Scout](https://laravel.com/docs/scout) for external search engines like Meilisearch or Algolia:
-
-```ini
-SQL_AGENT_SEARCH_DRIVER=scout
-SCOUT_DRIVER=meilisearch
-MEILISEARCH_HOST=http://localhost:7700
-MEILISEARCH_KEY=your-key
-```
-
-Requires the `laravel/scout` package:
-
-```bash
-composer require laravel/scout
-```
-
 ### pgvector
 
 Uses PostgreSQL's [pgvector](https://github.com/pgvector/pgvector) extension for semantic similarity search via vector embeddings. This provides the most accurate search results by understanding the meaning of queries rather than just matching keywords.
@@ -131,25 +114,3 @@ php artisan sql-agent:generate-embeddings
 ```
 
 Embeddings are automatically kept in sync when records are created or updated.
-
-:::tip
-The pgvector driver works best with the hybrid driver as primary, with database full-text search as fallback. This gives you semantic search quality with reliability when the embeddings service is unavailable.
-:::
-
-### Hybrid
-
-Combines two search drivers with automatic fallback. Useful when you want the quality of an external search engine with the reliability of a local fallback:
-
-```ini
-SQL_AGENT_SEARCH_DRIVER=hybrid
-```
-
-Configure the hybrid driver in `config/sql-agent.php`:
-
-```php
-'hybrid' => [
-    'primary' => 'pgvector',     // or 'scout'
-    'fallback' => 'database',
-    'merge_results' => false, // Set true to combine results from both drivers
-],
-```

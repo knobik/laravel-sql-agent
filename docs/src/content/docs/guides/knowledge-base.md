@@ -2,7 +2,7 @@
 title: Knowledge Base
 description: Define table metadata, business rules, and query patterns to give the agent context.
 sidebar:
-  order: 2
+  order: 3
 ---
 
 The knowledge base provides SqlAgent with the context it needs to write accurate SQL — your database schema, business terminology, metrics definitions, and example queries. Without this context, LLMs must guess at column meanings, business rules, and data quirks.

@@ -88,7 +88,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Configure the search driver for semantic search.
-    | Supported drivers: "database", "scout", "hybrid", "null"
+    | Supported drivers: "database", "pgvector", "null"
     |
     */
     'search' => [
@@ -128,23 +128,6 @@ return [
 
             /*
             |--------------------------------------------------------------------------
-            | Scout Driver Configuration
-            |--------------------------------------------------------------------------
-            |
-            | Laravel Scout integration for external search engines.
-            | Requires models to use the Laravel\Scout\Searchable trait.
-            |
-            */
-            'scout' => [
-                // The Scout driver to use (meilisearch, algolia, etc.)
-                'driver' => env('SCOUT_DRIVER', 'meilisearch'),
-
-                // Custom index to model class mapping (optional)
-                // 'index_mapping' => [],
-            ],
-
-            /*
-            |--------------------------------------------------------------------------
             | pgvector Driver Configuration
             |--------------------------------------------------------------------------
             |
@@ -163,25 +146,6 @@ return [
                 // ],
             ],
 
-            /*
-            |--------------------------------------------------------------------------
-            | Hybrid Driver Configuration
-            |--------------------------------------------------------------------------
-            |
-            | Combines Scout as primary with database fallback.
-            | Useful for reliability when external search services may be unavailable.
-            |
-            */
-            'hybrid' => [
-                // Primary search driver
-                'primary' => 'scout',
-
-                // Fallback driver if primary fails
-                'fallback' => 'database',
-
-                // Whether to merge results from both drivers (vs using primary only)
-                'merge_results' => false,
-            ],
         ],
     ],
 

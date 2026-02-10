@@ -2,7 +2,7 @@
 title: Web Interface
 description: Livewire chat UI, streaming, debug mode, and conversation exports.
 sidebar:
-  order: 4
+  order: 5
 ---
 
 SqlAgent ships with a ready-to-use Livewire chat interface that you can drop into any Laravel application. It provides a conversational UI for asking questions, viewing SQL results, and browsing conversation history.

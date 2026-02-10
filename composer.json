@@ -28,8 +28,7 @@
         "phpstan/phpstan": "^2.1"
     },
     "suggest": {
-        "livewire/livewire": "Required for the chat UI",
-        "laravel/scout": "Required for Scout search driver"
+        "livewire/livewire": "Required for the chat UI"
     },
     "autoload": {
         "psr-4": {

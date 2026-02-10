@@ -10,10 +10,8 @@ use Knobik\SqlAgent\Contracts\SearchDriver;
 use Knobik\SqlAgent\Embeddings\EmbeddingGenerator;
 use Knobik\SqlAgent\Embeddings\TextSerializer;
 use Knobik\SqlAgent\Search\Drivers\DatabaseSearchDriver;
-use Knobik\SqlAgent\Search\Drivers\HybridSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\NullSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\PgvectorSearchDriver;
-use Knobik\SqlAgent\Search\Drivers\ScoutSearchDriver;
 
 /**
  * Search manager for managing search drivers.
@@ -38,33 +36,6 @@ class SearchManager extends Manager implements SearchDriver
     }
 
     /**
-     * Create a Scout search driver instance.
-     */
-    public function createScoutDriver(): ScoutSearchDriver
-    {
-        $config = $this->config->get('sql-agent.search.drivers.scout', []);
-
-        return new ScoutSearchDriver($config);
-    }
-
-    /**
-     * Create a hybrid search driver instance.
-     */
-    public function createHybridDriver(): HybridSearchDriver
-    {
-        $config = $this->config->get('sql-agent.search.drivers.hybrid', []);
-
-        $primaryName = $config['primary'] ?? 'scout';
-        $fallbackName = $config['fallback'] ?? 'database';
-
-        // Create driver instances directly to avoid recursion
-        $primaryDriver = $this->createDriverInstance($primaryName);
-        $fallbackDriver = $this->createDriverInstance($fallbackName);
-
-        return new HybridSearchDriver($primaryDriver, $fallbackDriver, $config);
-    }
-
-    /**
      * Create a pgvector search driver instance.
      */
     public function createPgvectorDriver(): PgvectorSearchDriver
@@ -84,21 +55,6 @@ class SearchManager extends Manager implements SearchDriver
     public function createNullDriver(): NullSearchDriver
     {
         return new NullSearchDriver;
-    }
-
-    /**
-     * Create a driver instance by name without storing it.
-     */
-    protected function createDriverInstance(string $name): SearchDriver
-    {
-        $method = 'create'.ucfirst($name).'Driver';
-
-        if (method_exists($this, $method)) {
-            return $this->$method();
-        }
-
-        // Default to database driver
-        return $this->createDatabaseDriver();
     }
 
     /**

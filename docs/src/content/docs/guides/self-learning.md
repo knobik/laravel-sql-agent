@@ -2,7 +2,7 @@
 title: Self-Learning
 description: Automatic learning from SQL errors to improve agent accuracy over time.
 sidebar:
-  order: 6
+  order: 7
 ---
 
 SqlAgent can automatically learn from its mistakes and improve over time without any manual intervention. The agent maintains two dynamic knowledge systems that grow as it processes queries.

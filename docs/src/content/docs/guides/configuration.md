@@ -145,26 +145,15 @@ Search drivers determine how SqlAgent finds relevant knowledge (table metadata, 
         'pgvector' => [
             'distance_metric' => 'cosine',
         ],
-
-        'scout' => [
-            'driver' => env('SCOUT_DRIVER', 'meilisearch'),
-        ],
-
-        'hybrid' => [
-            'primary' => 'scout',
-            'fallback' => 'database',
-            'merge_results' => false,
-        ],
     ],
 ],
 ```
 
-Four drivers are available:
+Three drivers are available:
 
 - **`database`** — Uses native full-text search (`MATCH ... AGAINST` on MySQL, `tsvector` on PostgreSQL, `LIKE` on SQLite, `CONTAINS` on SQL Server). No external services required.
 - **`pgvector`** — Uses PostgreSQL pgvector for semantic similarity search via vector embeddings. Requires a dedicated PostgreSQL connection with pgvector installed. See [Embeddings](#embeddings) above.
-- **`scout`** — Integrates with [Laravel Scout](https://laravel.com/docs/scout) for external search engines like Meilisearch or Algolia. Requires the `laravel/scout` package.
-- **`hybrid`** — Combines any two drivers with automatic fallback. Set `merge_results` to `true` to combine results from both.
+- **`null`** — Disables search entirely. Useful for testing or when knowledge search is not needed.
 
 ## Agent Behavior
 

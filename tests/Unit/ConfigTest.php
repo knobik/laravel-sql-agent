@@ -11,8 +11,6 @@
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Knobik\SqlAgent\Data\GradeResult;
 use Knobik\SqlAgent\Models\Learning;
-use Knobik\SqlAgent\Search\Drivers\DatabaseSearchDriver;
-use Knobik\SqlAgent\Search\Drivers\HybridSearchDriver;
 use Knobik\SqlAgent\Search\SearchManager;
 use Knobik\SqlAgent\Search\Strategies\MysqlFullTextStrategy;
 use Knobik\SqlAgent\Search\Strategies\PostgresFullTextStrategy;
@@ -117,31 +115,6 @@ describe('Search Configuration', function () {
         expect($reflection->getValue($strategy)['language'])->toBe('spanish');
     });
 
-    it('hybrid driver uses merge_results config', function () {
-        $config = ['merge_results' => true];
-        $primaryDriver = new DatabaseSearchDriver([]);
-        $fallbackDriver = new DatabaseSearchDriver([]);
-
-        $hybrid = new HybridSearchDriver($primaryDriver, $fallbackDriver, $config);
-
-        $reflection = new ReflectionMethod($hybrid, 'shouldMergeResults');
-        $reflection->setAccessible(true);
-
-        expect($reflection->invoke($hybrid))->toBeTrue();
-    });
-
-    it('hybrid driver defaults merge_results to false', function () {
-        $config = [];
-        $primaryDriver = new DatabaseSearchDriver([]);
-        $fallbackDriver = new DatabaseSearchDriver([]);
-
-        $hybrid = new HybridSearchDriver($primaryDriver, $fallbackDriver, $config);
-
-        $reflection = new ReflectionMethod($hybrid, 'shouldMergeResults');
-        $reflection->setAccessible(true);
-
-        expect($reflection->invoke($hybrid))->toBeFalse();
-    });
 });
 
 describe('Agent Configuration', function () {

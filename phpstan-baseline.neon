@@ -1,7 +1,2 @@
 parameters:
-	ignoreErrors:
-		-
-			message: '#^Class Laravel\\Scout\\Searchable not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: src/Search/Drivers/ScoutSearchDriver.php
+	ignoreErrors: []
