@@ -48,11 +48,11 @@ class EmbeddingGenerator
 
     protected function provider(): string
     {
-        return config('sql-agent.embeddings.provider', 'openai');
+        return config('sql-agent.search.drivers.pgvector.provider', 'openai');
     }
 
     protected function model(): string
     {
-        return config('sql-agent.embeddings.model', 'text-embedding-3-small');
+        return config('sql-agent.search.drivers.pgvector.model', 'text-embedding-3-small');
     }
 }

@@ -106,7 +106,7 @@ php artisan sql-agent:generate-embeddings --force --batch-size=100
 | `--batch-size=50` | Number of records to process per batch (default: 50) |
 
 :::note
-This command requires the `SQL_AGENT_EMBEDDINGS_CONNECTION` to be configured and pointing to a PostgreSQL database with pgvector installed.
+This command requires the pgvector driver's `connection` to be configured (via `SQL_AGENT_EMBEDDINGS_CONNECTION`) and pointing to a PostgreSQL database with pgvector installed.
 :::
 
 ## `sql-agent:purge`
@@ -128,5 +128,5 @@ php artisan sql-agent:purge
 When `--all` is used (or no options are specified), evaluation test cases are also purged.
 
 :::note
-When the pgvector search driver is configured (`SQL_AGENT_EMBEDDINGS_CONNECTION` is set), purging learnings or knowledge also truncates the `sql_agent_embeddings` table on the embeddings connection.
+When the pgvector driver's `connection` is configured (`SQL_AGENT_EMBEDDINGS_CONNECTION` is set), purging learnings or knowledge also truncates the `sql_agent_embeddings` table on the embeddings connection.
 :::

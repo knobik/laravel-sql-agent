@@ -41,7 +41,7 @@ class Embedding extends EloquentModel
 
     public function getConnectionName(): ?string
     {
-        return config('sql-agent.embeddings.connection')
+        return config('sql-agent.search.drivers.pgvector.connection')
             ?? parent::getConnectionName();
     }
 

@@ -103,30 +103,6 @@ Use `provider_options` in the config to enable thinking/reasoning mode:
 
 When thinking mode is active, the LLM's internal reasoning is captured in streaming SSE events and stored in debug metadata.
 
-## Embeddings
-
-Configure vector embeddings for the pgvector search driver. Embeddings are stored on a dedicated PostgreSQL connection, separate from your main application database:
-
-```php
-'embeddings' => [
-    'connection' => env('SQL_AGENT_EMBEDDINGS_CONNECTION'),
-    'provider' => env('SQL_AGENT_EMBEDDINGS_PROVIDER', 'openai'),
-    'model' => env('SQL_AGENT_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
-    'dimensions' => (int) env('SQL_AGENT_EMBEDDINGS_DIMENSIONS', 1536),
-],
-```
-
-| Option | Description | Default |
-|--------|-------------|---------|
-| `connection` | Dedicated PostgreSQL connection name for embedding storage | `null` |
-| `provider` | Prism embedding provider (`openai`, `ollama`, `gemini`, `mistral`, `voyageai`) | `openai` |
-| `model` | Embedding model identifier | `text-embedding-3-small` |
-| `dimensions` | Vector dimensions (must match the model's output dimensions) | `1536` |
-
-:::caution
-The `connection` must point to a PostgreSQL database with the pgvector extension installed. This connection is only used for embedding storage — your main app and SqlAgent storage tables can use any supported database.
-:::
-
 ## Search
 
 Search drivers determine how SqlAgent finds relevant knowledge (table metadata, business rules, query patterns) based on the user's question:
@@ -143,6 +119,10 @@ Search drivers determine how SqlAgent finds relevant knowledge (table metadata, 
         ],
 
         'pgvector' => [
+            'connection' => env('SQL_AGENT_EMBEDDINGS_CONNECTION'),
+            'provider' => env('SQL_AGENT_EMBEDDINGS_PROVIDER', 'openai'),
+            'model' => env('SQL_AGENT_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
+            'dimensions' => (int) env('SQL_AGENT_EMBEDDINGS_DIMENSIONS', 1536),
             'distance_metric' => 'cosine',
         ],
     ],
@@ -152,8 +132,56 @@ Search drivers determine how SqlAgent finds relevant knowledge (table metadata, 
 Three drivers are available:
 
 - **`database`** — Uses native full-text search (`MATCH ... AGAINST` on MySQL, `tsvector` on PostgreSQL, `LIKE` on SQLite, `CONTAINS` on SQL Server). No external services required.
-- **`pgvector`** — Uses PostgreSQL pgvector for semantic similarity search via vector embeddings. Requires a dedicated PostgreSQL connection with pgvector installed. See [Embeddings](#embeddings) above.
+- **`pgvector`** — Uses PostgreSQL pgvector for semantic similarity search via vector embeddings. Requires a dedicated PostgreSQL connection with pgvector installed. See the pgvector options below.
 - **`null`** — Disables search entirely. Useful for testing or when knowledge search is not needed.
+
+### Database Driver Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `mysql.mode` | MySQL full-text search mode (`NATURAL LANGUAGE MODE` or `BOOLEAN MODE`) | `NATURAL LANGUAGE MODE` |
+| `pgsql.language` | PostgreSQL text search language (`english`, `spanish`, `german`, etc.) | `english` |
+| `index_mapping` | Custom index name to model class mapping (see [Index Mapping](#index-mapping)) | `[]` |
+
+### pgvector Driver Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `connection` | Dedicated PostgreSQL connection name for embedding storage | `null` |
+| `provider` | Prism embedding provider (`openai`, `ollama`, `gemini`, `mistral`, `voyageai`) | `openai` |
+| `model` | Embedding model identifier | `text-embedding-3-small` |
+| `dimensions` | Vector dimensions (must match the model's output dimensions) | `1536` |
+| `distance_metric` | Distance function for similarity search (`cosine`, `l2`, `inner_product`) | `cosine` |
+| `index_mapping` | Custom index name to model class mapping (see below) | `[]` |
+
+:::caution
+The `connection` must point to a PostgreSQL database with the pgvector extension installed. This connection is only used for embedding storage — your main app and SqlAgent storage tables can use any supported database.
+:::
+
+### Index Mapping
+
+Both the `database` and `pgvector` drivers support an `index_mapping` option that maps search index names to Eloquent model classes. By default, the drivers register two indexes:
+
+| Index | Model |
+|-------|-------|
+| `query_patterns` | `Knobik\SqlAgent\Models\QueryPattern` |
+| `learnings` | `Knobik\SqlAgent\Models\Learning` |
+
+You can add custom indexes by providing an `index_mapping` array in the driver config. Custom mappings are merged with the defaults, so you only need to specify additional indexes:
+
+```php
+'database' => [
+    // ...
+    'index_mapping' => [
+        'custom_index' => \App\Models\CustomModel::class,
+    ],
+],
+```
+
+Each model referenced in `index_mapping` must extend `Illuminate\Database\Eloquent\Model` and implement the `Knobik\SqlAgent\Contracts\Searchable` interface, which requires two methods:
+
+- `getSearchableColumns()` — Returns the column names to index for search.
+- `toSearchableArray()` — Returns the searchable representation of the model.
 
 ## Agent Behavior
 

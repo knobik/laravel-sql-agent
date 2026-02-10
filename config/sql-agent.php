@@ -67,23 +67,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Embeddings Configuration
-    |--------------------------------------------------------------------------
-    |
-    | Configure vector embeddings for pgvector search.
-    | Uses Prism PHP for embedding generation and a dedicated PostgreSQL
-    | connection with pgvector for storage and similarity search.
-    |
-    */
-    'embeddings' => [
-        'connection' => env('SQL_AGENT_EMBEDDINGS_CONNECTION'),
-        'provider' => env('SQL_AGENT_EMBEDDINGS_PROVIDER', 'openai'),
-        'model' => env('SQL_AGENT_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
-        'dimensions' => (int) env('SQL_AGENT_EMBEDDINGS_DIMENSIONS', 1536),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Search Configuration
     |--------------------------------------------------------------------------
     |
@@ -133,10 +116,19 @@ return [
             |
             | Semantic similarity search using PostgreSQL pgvector extension.
             | Requires a dedicated PostgreSQL connection with pgvector installed.
-            | Configure the embeddings connection above in the 'embeddings' section.
             |
             */
             'pgvector' => [
+                // Dedicated PostgreSQL connection for embedding storage
+                'connection' => env('SQL_AGENT_EMBEDDINGS_CONNECTION'),
+
+                // Prism embedding provider and model
+                'provider' => env('SQL_AGENT_EMBEDDINGS_PROVIDER', 'openai'),
+                'model' => env('SQL_AGENT_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
+
+                // Vector dimensions (must match the model's output dimensions)
+                'dimensions' => (int) env('SQL_AGENT_EMBEDDINGS_DIMENSIONS', 1536),
+
                 // Distance metric: cosine (default), l2, inner_product
                 'distance_metric' => 'cosine',
 

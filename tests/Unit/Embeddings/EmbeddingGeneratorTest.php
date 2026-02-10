@@ -7,8 +7,8 @@ use Prism\Prism\ValueObjects\Embedding;
 
 beforeEach(function () {
     config([
-        'sql-agent.embeddings.provider' => 'openai',
-        'sql-agent.embeddings.model' => 'text-embedding-3-small',
+        'sql-agent.search.drivers.pgvector.provider' => 'openai',
+        'sql-agent.search.drivers.pgvector.model' => 'text-embedding-3-small',
     ]);
 
     $this->generator = new EmbeddingGenerator;
@@ -53,7 +53,7 @@ test('embedBatch returns empty array for empty input', function () {
 });
 
 test('embed reads provider from config', function () {
-    config(['sql-agent.embeddings.provider' => 'ollama']);
+    config(['sql-agent.search.drivers.pgvector.provider' => 'ollama']);
 
     Prism::fake([
         EmbeddingsResponseFake::make()->withEmbeddings([

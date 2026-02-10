@@ -33,7 +33,7 @@ class GenerateEmbeddingsCommand extends Command
 
     public function handle(EmbeddingGenerator $generator, TextSerializer $serializer): int
     {
-        $connection = config('sql-agent.embeddings.connection');
+        $connection = config('sql-agent.search.drivers.pgvector.connection');
 
         if (! $connection) {
             $this->error('No embeddings connection configured. Set SQL_AGENT_EMBEDDINGS_CONNECTION in your .env file.');

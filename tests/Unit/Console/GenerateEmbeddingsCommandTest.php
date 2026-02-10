@@ -7,7 +7,7 @@ use Knobik\SqlAgent\Models\QueryPattern;
 uses(RefreshDatabase::class);
 
 test('fails when no embeddings connection configured', function () {
-    config(['sql-agent.embeddings.connection' => null]);
+    config(['sql-agent.search.drivers.pgvector.connection' => null]);
 
     $this->artisan('sql-agent:generate-embeddings')
         ->expectsOutputToContain('No embeddings connection configured')
@@ -16,7 +16,7 @@ test('fails when no embeddings connection configured', function () {
 
 test('fails when embeddings connection is not postgresql', function () {
     // Point at the SQLite testing connection
-    config(['sql-agent.embeddings.connection' => 'testing']);
+    config(['sql-agent.search.drivers.pgvector.connection' => 'testing']);
 
     $this->artisan('sql-agent:generate-embeddings')
         ->expectsOutputToContain('must be a PostgreSQL connection')
@@ -24,7 +24,7 @@ test('fails when embeddings connection is not postgresql', function () {
 });
 
 test('fails with unknown model filter', function () {
-    config(['sql-agent.embeddings.connection' => 'testing']);
+    config(['sql-agent.search.drivers.pgvector.connection' => 'testing']);
 
     // Bypass the pgsql check by using a fake connection that reports as pgsql
     // Instead, test the model validation directly - it runs after the driver check,

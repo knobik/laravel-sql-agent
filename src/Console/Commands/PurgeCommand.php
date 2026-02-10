@@ -113,7 +113,7 @@ class PurgeCommand extends Command
      */
     protected function purgeEmbeddings(array $purgedTables): void
     {
-        $embeddingsConnection = config('sql-agent.embeddings.connection');
+        $embeddingsConnection = config('sql-agent.search.drivers.pgvector.connection');
 
         if (! $embeddingsConnection) {
             return;

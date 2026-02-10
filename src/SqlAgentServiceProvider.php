@@ -127,7 +127,7 @@ class SqlAgentServiceProvider extends ServiceProvider
             return;
         }
 
-        if (! config('sql-agent.embeddings.connection')) {
+        if (! config('sql-agent.search.drivers.pgvector.connection')) {
             return;
         }
 

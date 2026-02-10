@@ -27,7 +27,7 @@ return new class extends Migration
 
         DB::connection($connection)->statement('CREATE EXTENSION IF NOT EXISTS vector');
 
-        $dimensions = (int) config('sql-agent.embeddings.dimensions', 1536);
+        $dimensions = (int) config('sql-agent.search.drivers.pgvector.dimensions', 1536);
 
         Schema::connection($connection)->create('sql_agent_embeddings', function (Blueprint $table) use ($dimensions) {
             $table->id();
@@ -65,6 +65,6 @@ return new class extends Migration
 
     public function getConnection(): ?string
     {
-        return config('sql-agent.embeddings.connection');
+        return config('sql-agent.search.drivers.pgvector.connection');
     }
 };
