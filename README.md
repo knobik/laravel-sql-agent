@@ -6,7 +6,7 @@
 
 > **Alpha Release** - This package is in early development. APIs may change without notice.
 
-A self-learning text-to-SQL package that converts natural language questions into SQL queries using LLMs.
+A self-learning text-to-SQL agent that converts natural language questions into SQL queries using LLMs.
 
 This package is based on [Dash](https://github.com/agno-agi/dash) and [OpenAI's in-house data agent](https://openai.com/index/inside-our-in-house-data-agent/).
 
