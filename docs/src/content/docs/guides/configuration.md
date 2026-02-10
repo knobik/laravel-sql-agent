@@ -103,6 +103,30 @@ Use `provider_options` in the config to enable thinking/reasoning mode:
 
 When thinking mode is active, the LLM's internal reasoning is captured in streaming SSE events and stored in debug metadata.
 
+## Embeddings
+
+Configure vector embeddings for the pgvector search driver. Embeddings are stored on a dedicated PostgreSQL connection, separate from your main application database:
+
+```php
+'embeddings' => [
+    'connection' => env('SQL_AGENT_EMBEDDINGS_CONNECTION'),
+    'provider' => env('SQL_AGENT_EMBEDDINGS_PROVIDER', 'openai'),
+    'model' => env('SQL_AGENT_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
+    'dimensions' => (int) env('SQL_AGENT_EMBEDDINGS_DIMENSIONS', 1536),
+],
+```
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `connection` | Dedicated PostgreSQL connection name for embedding storage | `null` |
+| `provider` | Prism embedding provider (`openai`, `ollama`, `gemini`, `mistral`, `voyageai`) | `openai` |
+| `model` | Embedding model identifier | `text-embedding-3-small` |
+| `dimensions` | Vector dimensions (must match the model's output dimensions) | `1536` |
+
+:::caution
+The `connection` must point to a PostgreSQL database with the pgvector extension installed. This connection is only used for embedding storage — your main app and SqlAgent storage tables can use any supported database.
+:::
+
 ## Search
 
 Search drivers determine how SqlAgent finds relevant knowledge (table metadata, business rules, query patterns) based on the user's question:
@@ -118,6 +142,10 @@ Search drivers determine how SqlAgent finds relevant knowledge (table metadata, 
             'sqlsrv' => [],
         ],
 
+        'pgvector' => [
+            'distance_metric' => 'cosine',
+        ],
+
         'scout' => [
             'driver' => env('SCOUT_DRIVER', 'meilisearch'),
         ],
@@ -131,11 +159,12 @@ Search drivers determine how SqlAgent finds relevant knowledge (table metadata, 
 ],
 ```
 
-Three drivers are available:
+Four drivers are available:
 
 - **`database`** — Uses native full-text search (`MATCH ... AGAINST` on MySQL, `tsvector` on PostgreSQL, `LIKE` on SQLite, `CONTAINS` on SQL Server). No external services required.
+- **`pgvector`** — Uses PostgreSQL pgvector for semantic similarity search via vector embeddings. Requires a dedicated PostgreSQL connection with pgvector installed. See [Embeddings](#embeddings) above.
 - **`scout`** — Integrates with [Laravel Scout](https://laravel.com/docs/scout) for external search engines like Meilisearch or Algolia. Requires the `laravel/scout` package.
-- **`hybrid`** — Uses Scout as the primary driver with a database fallback. Set `merge_results` to `true` to combine results from both.
+- **`hybrid`** — Combines any two drivers with automatic fallback. Set `merge_results` to `true` to combine results from both.
 
 ## Agent Behavior
 

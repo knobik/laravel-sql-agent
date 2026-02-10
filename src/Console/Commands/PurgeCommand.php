@@ -65,6 +65,8 @@ class PurgeCommand extends Command
             $this->enableForeignKeyChecks($connection);
         }
 
+        $this->purgeEmbeddings($tablesToPurge);
+
         $this->newLine();
         $this->info('Purge completed successfully.');
 
@@ -102,6 +104,39 @@ class PurgeCommand extends Command
         }
 
         return array_unique($tables);
+    }
+
+    /**
+     * Purge embeddings from the pgvector connection when relevant tables are being purged.
+     *
+     * @param  array<string>  $purgedTables
+     */
+    protected function purgeEmbeddings(array $purgedTables): void
+    {
+        $embeddingsConnection = config('sql-agent.embeddings.connection');
+
+        if (! $embeddingsConnection) {
+            return;
+        }
+
+        $embeddingsTable = 'sql_agent_embeddings';
+
+        if (! Schema::connection($embeddingsConnection)->hasTable($embeddingsTable)) {
+            return;
+        }
+
+        // Determine which embeddable tables were purged
+        $embeddableTables = array_intersect($purgedTables, array_merge(
+            $this->tables['learnings'],
+            $this->tables['knowledge'],
+        ));
+
+        if (empty($embeddableTables)) {
+            return;
+        }
+
+        DB::connection($embeddingsConnection)->table($embeddingsTable)->truncate();
+        $this->info("Truncated: {$embeddingsTable} (on {$embeddingsConnection} connection)");
     }
 
     protected function disableForeignKeyChecks(?string $connection): void

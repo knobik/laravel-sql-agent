@@ -7,9 +7,12 @@ namespace Knobik\SqlAgent\Search;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Manager;
 use Knobik\SqlAgent\Contracts\SearchDriver;
+use Knobik\SqlAgent\Embeddings\EmbeddingGenerator;
+use Knobik\SqlAgent\Embeddings\TextSerializer;
 use Knobik\SqlAgent\Search\Drivers\DatabaseSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\HybridSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\NullSearchDriver;
+use Knobik\SqlAgent\Search\Drivers\PgvectorSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\ScoutSearchDriver;
 
 /**
@@ -59,6 +62,20 @@ class SearchManager extends Manager implements SearchDriver
         $fallbackDriver = $this->createDriverInstance($fallbackName);
 
         return new HybridSearchDriver($primaryDriver, $fallbackDriver, $config);
+    }
+
+    /**
+     * Create a pgvector search driver instance.
+     */
+    public function createPgvectorDriver(): PgvectorSearchDriver
+    {
+        $config = $this->config->get('sql-agent.search.drivers.pgvector', []);
+
+        return new PgvectorSearchDriver(
+            $this->container->make(EmbeddingGenerator::class),
+            $this->container->make(TextSerializer::class),
+            $config,
+        );
     }
 
     /**

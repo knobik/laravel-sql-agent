@@ -94,9 +94,51 @@ Requires the `laravel/scout` package:
 composer require laravel/scout
 ```
 
+### pgvector
+
+Uses PostgreSQL's [pgvector](https://github.com/pgvector/pgvector) extension for semantic similarity search via vector embeddings. This provides the most accurate search results by understanding the meaning of queries rather than just matching keywords.
+
+The pgvector driver uses a **dedicated PostgreSQL connection** for storing embeddings, separate from your main application database. This means you can use MySQL, SQLite, or any other database for your app and SqlAgent storage while running pgvector on a specialized PostgreSQL instance:
+
+```ini
+SQL_AGENT_SEARCH_DRIVER=pgvector
+SQL_AGENT_EMBEDDINGS_CONNECTION=pgvector
+SQL_AGENT_EMBEDDINGS_PROVIDER=openai
+SQL_AGENT_EMBEDDINGS_MODEL=text-embedding-3-small
+SQL_AGENT_EMBEDDINGS_DIMENSIONS=1536
+```
+
+Add the PostgreSQL connection to `config/database.php`:
+
+```php
+'connections' => [
+    'pgvector' => [
+        'driver' => 'pgsql',
+        'host' => env('PGVECTOR_HOST', '127.0.0.1'),
+        'port' => env('PGVECTOR_PORT', '5432'),
+        'database' => env('PGVECTOR_DATABASE', 'embeddings'),
+        'username' => env('PGVECTOR_USERNAME', 'postgres'),
+        'password' => env('PGVECTOR_PASSWORD', ''),
+    ],
+],
+```
+
+After configuring, run migrations and generate embeddings for existing records:
+
+```bash
+php artisan migrate
+php artisan sql-agent:generate-embeddings
+```
+
+Embeddings are automatically kept in sync when records are created or updated.
+
+:::tip
+The pgvector driver works best with the hybrid driver as primary, with database full-text search as fallback. This gives you semantic search quality with reliability when the embeddings service is unavailable.
+:::
+
 ### Hybrid
 
-Combines Scout as the primary search engine with the database driver as a fallback. Useful when you want the quality of an external search engine with the reliability of a local fallback:
+Combines two search drivers with automatic fallback. Useful when you want the quality of an external search engine with the reliability of a local fallback:
 
 ```ini
 SQL_AGENT_SEARCH_DRIVER=hybrid
@@ -106,7 +148,7 @@ Configure the hybrid driver in `config/sql-agent.php`:
 
 ```php
 'hybrid' => [
-    'primary' => 'scout',
+    'primary' => 'pgvector',     // or 'scout'
     'fallback' => 'database',
     'merge_results' => false, // Set true to combine results from both drivers
 ],

@@ -3,6 +3,7 @@
 use Knobik\SqlAgent\Contracts\SearchDriver;
 use Knobik\SqlAgent\Search\Drivers\DatabaseSearchDriver;
 use Knobik\SqlAgent\Search\Drivers\NullSearchDriver;
+use Knobik\SqlAgent\Search\Drivers\PgvectorSearchDriver;
 use Knobik\SqlAgent\Search\SearchManager;
 
 beforeEach(function () {
@@ -85,4 +86,10 @@ test('delete method is proxied to current driver', function () {
 
     // NullSearchDriver delete() is a no-op, should not throw
     expect(fn () => $manager->delete((object) ['id' => 1]))->not->toThrow(Exception::class);
+});
+
+test('can create pgvector driver', function () {
+    $driver = $this->manager->driver('pgvector');
+
+    expect($driver)->toBeInstanceOf(PgvectorSearchDriver::class);
 });

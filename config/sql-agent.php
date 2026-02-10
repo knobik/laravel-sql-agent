@@ -67,6 +67,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Embeddings Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure vector embeddings for pgvector search.
+    | Uses Prism PHP for embedding generation and a dedicated PostgreSQL
+    | connection with pgvector for storage and similarity search.
+    |
+    */
+    'embeddings' => [
+        'connection' => env('SQL_AGENT_EMBEDDINGS_CONNECTION'),
+        'provider' => env('SQL_AGENT_EMBEDDINGS_PROVIDER', 'openai'),
+        'model' => env('SQL_AGENT_EMBEDDINGS_MODEL', 'text-embedding-3-small'),
+        'dimensions' => (int) env('SQL_AGENT_EMBEDDINGS_DIMENSIONS', 1536),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Search Configuration
     |--------------------------------------------------------------------------
     |
@@ -124,6 +141,26 @@ return [
 
                 // Custom index to model class mapping (optional)
                 // 'index_mapping' => [],
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | pgvector Driver Configuration
+            |--------------------------------------------------------------------------
+            |
+            | Semantic similarity search using PostgreSQL pgvector extension.
+            | Requires a dedicated PostgreSQL connection with pgvector installed.
+            | Configure the embeddings connection above in the 'embeddings' section.
+            |
+            */
+            'pgvector' => [
+                // Distance metric: cosine (default), l2, inner_product
+                'distance_metric' => 'cosine',
+
+                // Custom index to model class mapping (optional)
+                // 'index_mapping' => [
+                //     'custom_index' => \App\Models\CustomModel::class,
+                // ],
             ],
 
             /*

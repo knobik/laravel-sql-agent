@@ -14,10 +14,15 @@ use Knobik\SqlAgent\Agent\ToolLabelResolver;
 use Knobik\SqlAgent\Agent\ToolRegistry;
 use Knobik\SqlAgent\Contracts\Agent;
 use Knobik\SqlAgent\Contracts\SearchDriver;
+use Knobik\SqlAgent\Embeddings\EmbeddingGenerator;
+use Knobik\SqlAgent\Embeddings\EmbeddingObserver;
+use Knobik\SqlAgent\Embeddings\TextSerializer;
 use Knobik\SqlAgent\Events\SqlErrorOccurred;
 use Knobik\SqlAgent\Listeners\AutoLearnFromError;
 use Knobik\SqlAgent\Livewire\ChatComponent;
 use Knobik\SqlAgent\Livewire\ConversationList;
+use Knobik\SqlAgent\Models\Learning;
+use Knobik\SqlAgent\Models\QueryPattern;
 use Knobik\SqlAgent\Search\SearchManager;
 use Knobik\SqlAgent\Services\BusinessRulesLoader;
 use Knobik\SqlAgent\Services\ContextBuilder;
@@ -63,6 +68,11 @@ class SqlAgentServiceProvider extends ServiceProvider
         $this->app->singleton(ToolLabelResolver::class);
         $this->app->singleton(FallbackResponseGenerator::class);
         $this->app->singleton(EvaluationRunner::class);
+
+        // Embeddings
+        $this->app->singleton(EmbeddingGenerator::class);
+        $this->app->singleton(TextSerializer::class);
+        $this->app->singleton(Search\Drivers\PgvectorSearchDriver::class, fn ($app) => $app->make(SearchManager::class)->driver('pgvector'));
 
         // Search Manager (needs $app)
         $this->app->singleton(SearchManager::class, fn ($app) => new SearchManager($app));
@@ -110,6 +120,9 @@ class SqlAgentServiceProvider extends ServiceProvider
         $this->loadViewsFrom(__DIR__.'/../resources/views', 'sql-agent');
         $this->loadViewsFrom(__DIR__.'/../resources/prompts', 'sql-agent-prompts');
 
+        // Register embedding observers when pgvector driver is active
+        $this->registerEmbeddingObservers();
+
         // Register Livewire components if Livewire is available and UI is enabled
         $this->registerLivewireComponents();
 
@@ -126,6 +139,7 @@ class SqlAgentServiceProvider extends ServiceProvider
                 Console\Commands\ImportLearningsCommand::class,
                 Console\Commands\PruneLearningsCommand::class,
                 Console\Commands\PurgeCommand::class,
+                Console\Commands\GenerateEmbeddingsCommand::class,
             ]);
 
             // Publishables
@@ -149,6 +163,31 @@ class SqlAgentServiceProvider extends ServiceProvider
                 __DIR__.'/../resources/prompts' => resource_path('views/vendor/sql-agent/prompts'),
             ], 'sql-agent-prompts');
         }
+    }
+
+    protected function registerEmbeddingObservers(): void
+    {
+        $driver = config('sql-agent.search.default');
+
+        // Check if pgvector is the active driver (directly or as primary/fallback in hybrid)
+        $pgvectorActive = $driver === 'pgvector';
+
+        if (! $pgvectorActive && $driver === 'hybrid') {
+            $hybridConfig = config('sql-agent.search.drivers.hybrid', []);
+            $pgvectorActive = ($hybridConfig['primary'] ?? '') === 'pgvector'
+                || ($hybridConfig['fallback'] ?? '') === 'pgvector';
+        }
+
+        if (! $pgvectorActive) {
+            return;
+        }
+
+        if (! config('sql-agent.embeddings.connection')) {
+            return;
+        }
+
+        QueryPattern::observe(EmbeddingObserver::class);
+        Learning::observe(EmbeddingObserver::class);
     }
 
     protected function registerLivewireComponents(): void

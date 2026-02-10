@@ -89,6 +89,26 @@ php artisan sql-agent:prune-learnings
 This command is not scheduled automatically. Add it to your scheduler for hands-off maintenance. See [Configuration — Learning](/laravel-sql-agent/guides/configuration/#learning).
 :::
 
+## `sql-agent:generate-embeddings`
+
+Generate vector embeddings for existing knowledge base records. Required when switching to the pgvector search driver or after bulk-importing data.
+
+```bash
+php artisan sql-agent:generate-embeddings
+php artisan sql-agent:generate-embeddings --model=query_patterns
+php artisan sql-agent:generate-embeddings --force --batch-size=100
+```
+
+| Option | Description |
+|--------|-------------|
+| `--model=<name>` | Only generate for a specific model (`query_patterns` or `learnings`) |
+| `--force` | Regenerate embeddings even if they already exist |
+| `--batch-size=50` | Number of records to process per batch (default: 50) |
+
+:::note
+This command requires the `SQL_AGENT_EMBEDDINGS_CONNECTION` to be configured and pointing to a PostgreSQL database with pgvector installed.
+:::
+
 ## `sql-agent:purge`
 
 Purge SqlAgent data from the database by truncating the selected tables.
@@ -106,3 +126,7 @@ php artisan sql-agent:purge
 | `--force` | Skip the confirmation prompt |
 
 When `--all` is used (or no options are specified), evaluation test cases are also purged.
+
+:::note
+When the pgvector search driver is configured (`SQL_AGENT_EMBEDDINGS_CONNECTION` is set), purging learnings or knowledge also truncates the `sql_agent_embeddings` table on the embeddings connection.
+:::

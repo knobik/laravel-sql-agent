@@ -10,6 +10,7 @@ abstract class TestCase extends Orchestra
     protected function getPackageProviders($app): array
     {
         $providers = [
+            \Prism\Prism\PrismServiceProvider::class,
             SqlAgentServiceProvider::class,
         ];
 

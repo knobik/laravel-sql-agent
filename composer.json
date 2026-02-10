@@ -15,6 +15,7 @@
         "illuminate/console": "^11.0|^12.0",
         "spatie/laravel-data": "^4.0",
         "doctrine/dbal": "^3.0|^4.0",
+        "pgvector/pgvector": "^0.2",
         "prism-php/prism": "^0.99"
     },
     "require-dev": {
