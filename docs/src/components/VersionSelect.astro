@@ -7,7 +7,7 @@
 ---
 
 <starlight-version-select>
-	<label style="--sl-select-width: 7em" class="version-select">
+	<label class="version-select">
 		<span class="sr-only">Version</span>
 		<svg aria-hidden="true" class="icon label-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 			<path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
@@ -26,6 +26,25 @@
 		constructor() {
 			super();
 			this.init();
+		}
+
+		/** Resize the select to fit the currently selected option text. */
+		autoSize(select: HTMLSelectElement) {
+			const selected = select.options[select.selectedIndex];
+			if (!selected) return;
+			// Create a temporary span to measure the text width
+			const span = document.createElement('span');
+			span.style.visibility = 'hidden';
+			span.style.position = 'absolute';
+			span.style.whiteSpace = 'nowrap';
+			span.style.font = window.getComputedStyle(select).font;
+			span.textContent = selected.textContent;
+			document.body.appendChild(span);
+			// Set select width to text width + padding for icons
+			const paddingLeft = parseFloat(window.getComputedStyle(select).paddingLeft);
+			const paddingRight = parseFloat(window.getComputedStyle(select).paddingRight);
+			select.style.width = `${span.offsetWidth + paddingLeft + paddingRight}px`;
+			span.remove();
 		}
 
 		async init() {
@@ -67,6 +86,7 @@
 					select.appendChild(opt);
 				}
 
+				this.autoSize(select);
 				select.addEventListener('change', () => {
 					window.location.href = select.value;
 				});
@@ -127,9 +147,8 @@
 		padding-inline: calc(var(--sl-label-icon-size) + var(--sl-inline-padding) + 0.25rem)
 			calc(var(--sl-caret-size) + var(--sl-inline-padding) + 0.25rem);
 		margin-inline: calc(var(--sl-inline-padding) * -1);
-		width: calc(var(--sl-select-width) + var(--sl-inline-padding) * 2);
+		width: auto;
 		background-color: transparent;
-		text-overflow: ellipsis;
 		color: inherit;
 		cursor: pointer;
 		appearance: none;
