@@ -44,12 +44,70 @@
 
         @if($isAssistant && ($hasQueries || $hasPrompt || $usage))
             <div x-data="{
+                messageId: {{ (int) $messageId }},
                 showPrompt: false,
                 showQueries: false,
                 expandedQueries: {},
                 queryResults: {},
                 loadingQuery: null,
                 queryErrors: {},
+                queryPages: {},
+                pageSize: localStorage.getItem('sql-agent-page-size') !== null ? parseInt(localStorage.getItem('sql-agent-page-size')) : 25,
+                getPage(index) {
+                    return this.queryPages[index] || 0;
+                },
+                totalPages(index) {
+                    if (!this.queryResults[index]?.rows) return 0;
+                    if (this.pageSize === 0) return 1;
+                    return Math.ceil(this.queryResults[index].rows.length / this.pageSize);
+                },
+                pagedRows(index) {
+                    if (!this.queryResults[index]?.rows) return [];
+                    if (this.pageSize === 0) return this.queryResults[index].rows;
+                    const start = this.getPage(index) * this.pageSize;
+                    return this.queryResults[index].rows.slice(start, start + this.pageSize);
+                },
+                setPage(index, page) {
+                    this.queryPages[index] = page;
+                },
+                setPageSize(size) {
+                    this.pageSize = size;
+                    localStorage.setItem('sql-agent-page-size', size);
+                    this.queryPages = {};
+                },
+                pageNumbers(index) {
+                    const total = this.totalPages(index);
+                    if (total <= 7) return Array.from({length: total}, (_, i) => i);
+                    const current = this.getPage(index);
+                    const pages = new Set([0, total - 1]);
+                    for (let i = Math.max(1, current - 1); i <= Math.min(total - 2, current + 1); i++) {
+                        pages.add(i);
+                    }
+                    const sorted = [...pages].sort((a, b) => a - b);
+                    const result = [];
+                    for (let i = 0; i < sorted.length; i++) {
+                        if (i > 0 && sorted[i] - sorted[i-1] > 1) result.push(null);
+                        result.push(sorted[i]);
+                    }
+                    return result;
+                },
+                resultsInfo(index) {
+                    const r = this.queryResults[index];
+                    if (!r) return '';
+                    let text = '(';
+                    if (this.totalPages(index) > 1) {
+                        const start = this.getPage(index) * this.pageSize + 1;
+                        const end = Math.min(start + this.pageSize - 1, r.row_count);
+                        text += start + '\u2013' + end + ' of ' + r.row_count + ' rows';
+                    } else {
+                        text += r.row_count + ' of ' + r.total_rows + ' rows';
+                    }
+                    if (r.truncated) {
+                        text += ', truncated';
+                    }
+                    text += ')';
+                    return text;
+                },
                 toggleSql(index) {
                     this.expandedQueries[index] = !this.expandedQueries[index];
                 },
@@ -71,13 +129,53 @@
                             throw new Error(errorData?.message || `HTTP ${response.status}`);
                         }
                         this.queryResults[index] = await response.json();
+                        this.queryPages[index] = 0;
                     } catch (e) {
                         this.queryErrors[index] = e.message;
                     } finally {
                         this.loadingQuery = null;
                     }
+                },
+                handleAutoExecute(event) {
+                    if (event.detail.messageId !== this.messageId) return;
+                    const count = {{ $queryCount }};
+                    for (let i = 0; i < count; i++) {
+                        this.executeQuery(i);
+                    }
+                    if (count > 1) {
+                        this.showQueries = true;
+                    }
+                },
+                downloadFile(content, filename, type) {
+                    const blob = new Blob([content], { type });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                },
+                exportCsv(index) {
+                    const rows = this.queryResults[index].rows;
+                    if (!rows?.length) return;
+                    const q = v => String.fromCharCode(34) + String(v).replaceAll(String.fromCharCode(34), String.fromCharCode(34,34)) + String.fromCharCode(34);
+                    const cols = Object.keys(rows[0]);
+                    const lines = [cols.map(q).join(',')];
+                    for (const row of rows) {
+                        lines.push(cols.map(col => {
+                            const val = row[col];
+                            if (val === null) return '';
+                            return q(typeof val === 'object' ? JSON.stringify(val) : val);
+                        }).join(','));
+                    }
+                    this.downloadFile(lines.join('\n'), 'results.csv', 'text/csv');
+                },
+                exportJson(index) {
+                    const rows = this.queryResults[index].rows;
+                    if (!rows?.length) return;
+                    this.downloadFile(JSON.stringify(rows, null, 2), 'results.json', 'application/json');
                 }
-            }" class="mt-3">
+            }" @auto-execute-queries.window="handleAutoExecute($event)" class="mt-3">
                 <div class="flex flex-wrap items-center gap-2">
                     @if($usage)
                         <span class="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
@@ -134,7 +232,7 @@
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 21h7a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v11m0 5l4.879-4.879m0 0a3 3 0 104.243-4.242 3 3 0 00-4.243 4.242z" />
                             </svg>
-                            <span x-text="showPrompt ? 'Hide Prompt' : 'Debug: Show Prompt'"></span>
+                            <span x-text="showPrompt ? 'Hide Debug' : 'Debug'"></span>
                         </button>
                     @endif
                 </div>
@@ -229,11 +327,15 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                             </svg>
                                             <span class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Results</span>
-                                            <span class="text-xs text-gray-400 dark:text-gray-500" x-text="'(' + queryResults[{{ $index }}].row_count + ' of ' + queryResults[{{ $index }}].total_rows + ' rows' + (queryResults[{{ $index }}].truncated ? ', truncated' : '') + ')'"></span>
+                                            <span class="text-xs text-gray-400 dark:text-gray-500" x-text="resultsInfo({{ $index }})"></span>
+                                            <div class="ml-auto flex items-center gap-1">
+                                                <button @click="exportCsv({{ $index }})" class="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors">CSV</button>
+                                                <button @click="exportJson({{ $index }})" class="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors">JSON</button>
+                                            </div>
                                         </div>
-                                        <div class="overflow-x-auto custom-scrollbar max-h-96">
+                                        <div class="overflow-x-auto custom-scrollbar">
                                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                                <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                                                <thead class="bg-gray-50 dark:bg-gray-800">
                                                     <tr>
                                                         <template x-for="col in Object.keys(queryResults[{{ $index }}].rows[0] || {})" :key="col">
                                                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap border-b border-gray-200 dark:border-gray-700" x-text="col"></th>
@@ -241,7 +343,7 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-                                                    <template x-for="(row, rowIdx) in queryResults[{{ $index }}].rows.slice(0, 100)" :key="rowIdx">
+                                                    <template x-for="(row, rowIdx) in pagedRows({{ $index }})" :key="rowIdx">
                                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                                             <template x-for="col in Object.keys(queryResults[{{ $index }}].rows[0] || {})" :key="col">
                                                                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap max-w-xs truncate">
@@ -252,6 +354,55 @@
                                                     </template>
                                                 </tbody>
                                             </table>
+                                        </div>
+                                        <div x-show="queryResults[{{ $index }}].rows.length > 25" class="flex items-center justify-between px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                                            <div class="flex items-center gap-2">
+                                                <select
+                                                    @change="setPageSize(parseInt($event.target.value))"
+                                                    :value="pageSize"
+                                                    class="text-xs rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-2 py-1"
+                                                >
+                                                    <option value="25">25</option>
+                                                    <option value="50">50</option>
+                                                    <option value="100">100</option>
+                                                    <option value="0">Show all</option>
+                                                </select>
+                                                <span class="text-xs text-gray-400 dark:text-gray-500">per page</span>
+                                            </div>
+                                            <div x-show="totalPages({{ $index }}) > 1" class="flex items-center gap-1">
+                                                <button
+                                                    @click="setPage({{ $index }}, getPage({{ $index }}) - 1)"
+                                                    :disabled="getPage({{ $index }}) === 0"
+                                                    class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                                    </svg>
+                                                    Prev
+                                                </button>
+                                                <template x-for="(p, pIdx) in pageNumbers({{ $index }})" :key="'pg-' + pIdx">
+                                                    <span style="display: contents">
+                                                        <span x-show="p === null" class="text-xs text-gray-400 dark:text-gray-500 px-1">&hellip;</span>
+                                                        <button
+                                                            x-show="p !== null"
+                                                            @click="p !== null && setPage({{ $index }}, p)"
+                                                            :class="getPage({{ $index }}) === p ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300'"
+                                                            class="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors min-w-[28px] text-center"
+                                                            x-text="p !== null ? (p + 1) : ''"
+                                                        ></button>
+                                                    </span>
+                                                </template>
+                                                <button
+                                                    @click="setPage({{ $index }}, getPage({{ $index }}) + 1)"
+                                                    :disabled="getPage({{ $index }}) >= totalPages({{ $index }}) - 1"
+                                                    class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    Next
+                                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </template>
@@ -270,11 +421,15 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                     </svg>
                                     <span class="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Results</span>
-                                    <span class="text-xs text-gray-400 dark:text-gray-500" x-text="'(' + queryResults[0].row_count + ' of ' + queryResults[0].total_rows + ' rows' + (queryResults[0].truncated ? ', truncated' : '') + ')'"></span>
+                                    <span class="text-xs text-gray-400 dark:text-gray-500" x-text="resultsInfo(0)"></span>
+                                    <div class="ml-auto flex items-center gap-1">
+                                        <button @click="exportCsv(0)" class="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors">CSV</button>
+                                        <button @click="exportJson(0)" class="text-xs px-2 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors">JSON</button>
+                                    </div>
                                 </div>
-                                <div class="overflow-x-auto custom-scrollbar max-h-96">
+                                <div class="overflow-x-auto custom-scrollbar">
                                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                        <thead class="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                                        <thead class="bg-gray-50 dark:bg-gray-800">
                                             <tr>
                                                 <template x-for="col in Object.keys(queryResults[0].rows[0] || {})" :key="col">
                                                     <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap border-b border-gray-200 dark:border-gray-700" x-text="col"></th>
@@ -282,7 +437,7 @@
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-100 dark:divide-gray-800">
-                                            <template x-for="(row, rowIdx) in queryResults[0].rows.slice(0, 100)" :key="rowIdx">
+                                            <template x-for="(row, rowIdx) in pagedRows(0)" :key="rowIdx">
                                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                                                     <template x-for="col in Object.keys(queryResults[0].rows[0] || {})" :key="col">
                                                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap max-w-xs truncate">
@@ -293,6 +448,55 @@
                                             </template>
                                         </tbody>
                                     </table>
+                                </div>
+                                <div x-show="queryResults[0].rows.length > 25" class="flex items-center justify-between px-4 py-2.5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                                    <div class="flex items-center gap-2">
+                                        <select
+                                            @change="setPageSize(parseInt($event.target.value))"
+                                            :value="pageSize"
+                                            class="text-xs rounded-lg bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-2 py-1"
+                                        >
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                            <option value="100">100</option>
+                                            <option value="0">Show all</option>
+                                        </select>
+                                        <span class="text-xs text-gray-400 dark:text-gray-500">per page</span>
+                                    </div>
+                                    <div x-show="totalPages(0) > 1" class="flex items-center gap-1">
+                                        <button
+                                            @click="setPage(0, getPage(0) - 1)"
+                                            :disabled="getPage(0) === 0"
+                                            class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                                            </svg>
+                                            Prev
+                                        </button>
+                                        <template x-for="(p, pIdx) in pageNumbers(0)" :key="'pg-' + pIdx">
+                                            <span style="display: contents">
+                                                <span x-show="p === null" class="text-xs text-gray-400 dark:text-gray-500 px-1">&hellip;</span>
+                                                <button
+                                                    x-show="p !== null"
+                                                    @click="p !== null && setPage(0, p)"
+                                                    :class="getPage(0) === p ? 'bg-primary-500 text-white hover:bg-primary-600' : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300'"
+                                                    class="text-xs px-2.5 py-1 rounded-lg font-medium transition-colors min-w-[28px] text-center"
+                                                    x-text="p !== null ? (p + 1) : ''"
+                                                ></button>
+                                            </span>
+                                        </template>
+                                        <button
+                                            @click="setPage(0, getPage(0) + 1)"
+                                            :disabled="getPage(0) >= totalPages(0) - 1"
+                                            class="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Next
+                                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                            </svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

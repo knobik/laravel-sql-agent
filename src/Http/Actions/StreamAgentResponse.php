@@ -106,7 +106,7 @@ class StreamAgentResponse
             $metadata['truncated'] = true;
         }
 
-        $this->conversationService->addMessage(
+        $message = $this->conversationService->addMessage(
             $conversationId,
             MessageRole::Assistant,
             $fullContent,
@@ -116,6 +116,7 @@ class StreamAgentResponse
 
         $donePayload = [
             'queryCount' => count($allQueries),
+            'messageId' => $message->id,
         ];
         if ($usage !== null) {
             $donePayload['usage'] = $usage;
