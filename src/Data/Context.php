@@ -17,7 +17,11 @@ class Context extends Data
         /** @var Collection<int, mixed> */
         public Collection $learnings,
         public ?string $runtimeSchema = null,
-    ) {}
+        /** @var Collection<int, array<string, mixed>> */
+        public ?Collection $customKnowledge = null,
+    ) {
+        $this->customKnowledge ??= collect();
+    }
 
     public function toPromptString(): string
     {
@@ -47,6 +51,23 @@ class Context extends Data
                 ->map(fn ($l) => "- {$l['title']}: {$l['description']}")
                 ->implode("\n");
             $sections[] = $this->formatSection('RELEVANT LEARNINGS', $learnings);
+        }
+
+        // Layer 5b: Custom Knowledge
+        if ($this->customKnowledge->isNotEmpty()) {
+            $knowledge = $this->customKnowledge
+                ->map(function (array $item) {
+                    $parts = [];
+                    foreach ($item as $key => $value) {
+                        if ($value !== null && $value !== '') {
+                            $parts[] = "{$key}: {$value}";
+                        }
+                    }
+
+                    return '- '.implode(' | ', $parts);
+                })
+                ->implode("\n");
+            $sections[] = $this->formatSection('ADDITIONAL KNOWLEDGE', $knowledge);
         }
 
         // Layer 6: Runtime Schema
@@ -93,6 +114,7 @@ class Context extends Data
             && empty($this->businessRules)
             && $this->queryPatterns->isEmpty()
             && $this->learnings->isEmpty()
-            && empty($this->runtimeSchema);
+            && empty($this->runtimeSchema)
+            && $this->customKnowledge->isEmpty();
     }
 }
