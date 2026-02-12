@@ -125,18 +125,9 @@ describe('ContextBuilder', function () {
         config(['sql-agent.learning.enabled' => false]);
 
         $builder = app(ContextBuilder::class);
+        $context = $builder->build('How many users?');
 
-        try {
-            $context = $builder->build('How many users?');
-            expect($context)->toBeInstanceOf(\Knobik\SqlAgent\Data\Context::class);
-        } catch (\BadMethodCallException $e) {
-            // Doctrine DBAL not available for this driver - test without runtime schema
-            $context = $builder->buildWithOptions(
-                question: 'How many users?',
-                includeRuntimeSchema: false,
-            );
-            expect($context)->toBeInstanceOf(\Knobik\SqlAgent\Data\Context::class);
-        }
+        expect($context)->toBeInstanceOf(\Knobik\SqlAgent\Data\Context::class);
     });
 
     it('can build minimal context', function () {
@@ -153,7 +144,6 @@ describe('ContextBuilder', function () {
 
         expect($builder->getSemanticLoader())->toBeInstanceOf(SemanticModelLoader::class);
         expect($builder->getRulesLoader())->toBeInstanceOf(BusinessRulesLoader::class);
-        expect($builder->getIntrospector())->toBeInstanceOf(SchemaIntrospector::class);
     });
 
     it('can build context with custom options', function () {
@@ -166,7 +156,6 @@ describe('ContextBuilder', function () {
             includeBusinessRules: false,
             includeQueryPatterns: false,
             includeLearnings: false,
-            includeRuntimeSchema: false,
         );
 
         expect($context->businessRules)->toBe('');
@@ -191,21 +180,9 @@ describe('ContextBuilder', function () {
         app()->forgetInstance(ConnectionRegistry::class);
 
         $builder = app(ContextBuilder::class);
-
-        try {
-            $context = $builder->build('How many users?');
-        } catch (\BadMethodCallException $e) {
-            // Doctrine DBAL not available - skip runtime schema check
-            $this->markTestSkipped('Schema introspection not available for this driver.');
-        }
+        $context = $builder->build('How many users?');
 
         expect($context)->toBeInstanceOf(\Knobik\SqlAgent\Data\Context::class);
-
-        // Runtime schema should contain per-connection headers
-        if ($context->runtimeSchema !== null) {
-            expect($context->runtimeSchema)->toContain('Connection: sales (Sales Database)');
-            expect($context->runtimeSchema)->toContain('Connection: analytics (Analytics Database)');
-        }
     });
 
     it('includes business rules and learnings globally in multi-connection mode', function () {

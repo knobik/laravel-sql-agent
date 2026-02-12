@@ -15,15 +15,15 @@ SqlAgent converts questions to SQL through multi-layer context assembly, an agen
 
 ### Context Assembly
 
-Before the LLM sees the question, the `ContextBuilder` retrieves and assembles five context layers into the system prompt:
+Before the LLM sees the question, the `ContextBuilder` retrieves and assembles five context layers:
 
 - **Semantic model** — Table metadata, column descriptions, and relationships from your [Knowledge Base](/sql-agent/guides/knowledge-base/)
 - **Business rules** — Metrics definitions, domain rules, and common gotchas
 - **Similar query patterns** — Previously validated queries that match the current question, retrieved via the active [search driver](/sql-agent/guides/drivers/)
 - **Relevant learnings** — Patterns the agent discovered from past errors and corrections
-- **Runtime schema** — Live database introspection for the tables most likely relevant to the question
+- **Runtime schema** — Live database introspection available on-demand via the `introspect_schema` tool during the agent loop
 
-This happens automatically on every query — no manual prompt engineering required.
+The first four layers are assembled into the system prompt automatically. The runtime schema layer is fetched on-demand by the LLM when it needs exact column types, constraints, or foreign keys for specific tables.
 
 ### Agentic Tool Loop
 
